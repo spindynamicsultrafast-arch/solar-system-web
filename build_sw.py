@@ -1,0 +1,71 @@
+# -*- coding: utf-8 -*-
+"""sw.js (오프라인 캐시 목록) 생성기.
+
+    python build_sw.py
+
+배포 폴더에서 돌린다. 폴더의 html/js/css/png 를 전부 훑어 목록과 버전 해시를 sw.js 에
+박는다. 해시가 바뀌면 태블릿의 설치본이 다음 실행 때 새 파일을 받아 간다 — 목록을 손으로
+관리하면 새로 넣은 파일이 오프라인에서 빠진다.
+"""
+import hashlib
+import pathlib
+import sys
+
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # 윈도우 cp949 콘솔에서 한글 깨짐 방지
+
+BASE = pathlib.Path(__file__).resolve().parent
+EXT = {".html", ".js", ".css", ".png", ".json", ".svg", ".webmanifest"}
+SKIP = {"sw.js", "build_sw.py", "deploy.py"}
+
+files = sorted(
+    p for p in BASE.rglob("*")
+    if p.is_file() and p.suffix.lower() in EXT
+    and p.name not in SKIP and ".git" not in p.parts
+)
+rel = [str(p.relative_to(BASE)).replace("\\", "/") for p in files]
+
+h = hashlib.sha1()
+for p, r in zip(files, rel):
+    h.update(r.encode())
+    h.update(p.read_bytes())
+ver = h.hexdigest()[:10]
+
+listing = "\n".join(f"  '{r}'," for r in rel)
+(BASE / "sw.js").write_text(f"""/* 자동 생성 — build_sw.py 가 만든다. 직접 고치지 말 것.
+   설치 시 아래 파일을 전부 받아 두고(약 8MB), 그 뒤로는 캐시에서 먼저 꺼낸다(오프라인 동작).
+   VER 이 바뀌면 새 캐시를 채운 뒤 옛 캐시를 지운다. */
+const VER = 'solar-{ver}';
+const FILES = [
+  './',   // 주소를 폴더까지만 치고 들어오는 경우. 빼면 오프라인에서 상대경로가 다 어긋난다
+{listing}
+];
+
+self.addEventListener('install', e => {{
+  self.skipWaiting();
+  e.waitUntil(caches.open(VER).then(c => c.addAll(FILES)));
+}});
+
+self.addEventListener('activate', e => {{
+  e.waitUntil(caches.keys()
+    .then(ks => Promise.all(ks.filter(k => k !== VER).map(k => caches.delete(k))))
+    .then(() => self.clients.claim()));
+}});
+
+/* 캐시 우선 — 오프라인에서 즉시 뜬다. 캐시에 없으면 네트워크로 가고,
+   받아 온 것은 다음을 위해 넣어 둔다. 둘 다 실패하면 시작 화면을 돌려준다
+   (앱 화면을 직접 돌려주면 주소가 어긋나 옆 파일들을 못 찾는다). */
+self.addEventListener('fetch', e => {{
+  if (e.request.method !== 'GET') return;
+  e.respondWith(caches.match(e.request, {{ ignoreSearch: true }}).then(hit => hit ||
+    fetch(e.request).then(res => {{
+      if (res.ok && res.type === 'basic') {{
+        const copy = res.clone();
+        caches.open(VER).then(c => c.put(e.request, copy));
+      }}
+      return res;
+    }}).catch(() => caches.match('./'))));
+}});
+""", encoding="utf-8")
+
+total = sum(p.stat().st_size for p in files)
+print(f"sw.js 생성 - 파일 {len(rel)}개, {total/1024/1024:.1f}MB, 버전 {ver}")

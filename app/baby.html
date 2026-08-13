@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>반짝반짝 우리 태양계 (3D)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#fdf3ff;--panel:rgba(24,16,52,0.85);--panel-edge:rgba(178,150,255,0.4);}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;overflow:hidden;background:#04010c;}
+  body{font-family:'Jua',sans-serif;color:var(--ink);position:fixed;inset:0;
+    user-select:none;-webkit-user-select:none;touch-action:none;}
+  #app{position:absolute;inset:0;}
+  canvas{display:block;}
+  #fx{position:absolute;inset:0;z-index:6;pointer-events:none;}
+
+  #load{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;background:#04010c;transition:opacity .6s;}
+  #load.gone{opacity:0;pointer-events:none;}
+  #load .sun{width:70px;height:70px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff6d8,#ffd166 45%,#ff8c2b);
+    box-shadow:0 0 50px #ffb84d;animation:spin 2s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #load p{font-family:'Gaegu';font-size:18px;color:#c9b8ff;}
+
+  .title{position:absolute;top:max(12px,env(safe-area-inset-top));left:50%;
+    transform:translateX(-50%);z-index:10;text-align:center;pointer-events:none;}
+  .title h1{font-size:clamp(20px,4vw,36px);letter-spacing:1px;
+    background:linear-gradient(90deg,#fff2b0,#ffd166,#ff9ecd,#7ee8fa);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 2px 8px rgba(120,80,255,.5));}
+  .title p{font-family:'Gaegu';font-size:clamp(12px,2.2vw,16px);color:#c9b8ff;margin-top:1px;}
+
+  #labels{position:absolute;inset:0;z-index:8;pointer-events:none;}
+  .label{position:absolute;transform:translate(-50%,-50%);font-family:'Jua';font-size:15px;
+    color:#fff;white-space:nowrap;text-shadow:0 0 8px rgba(0,0,0,.9),0 2px 4px rgba(0,0,0,.9);
+    padding:1px 4px;transition:opacity .2s;}
+  .label.moon{font-size:12px;color:#dfe6ff;}
+  .label.dwarf{font-size:13px;color:#ffd9f2;}
+
+  .dock{position:absolute;left:50%;bottom:max(12px,env(safe-area-inset-bottom));
+    transform:translateX(-50%);z-index:10;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    justify-content:center;padding:10px 14px;max-width:96vw;background:var(--panel);
+    backdrop-filter:blur(12px);border:2px solid var(--panel-edge);border-radius:26px;
+    box-shadow:0 12px 40px rgba(0,0,0,.55);}
+  .btn{font-family:'Jua';font-size:15px;color:#2a1a4a;cursor:pointer;border:none;border-radius:16px;
+    padding:9px 13px;background:linear-gradient(180deg,#ffe08a,#ffd166);
+    box-shadow:0 5px 0 #c99a2e,0 8px 14px rgba(0,0,0,.35);transition:transform .08s,box-shadow .08s;white-space:nowrap;}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #c99a2e,0 3px 8px rgba(0,0,0,.35);}
+  .btn.sky{background:linear-gradient(180deg,#a9f0ff,#7ee8fa);box-shadow:0 5px 0 #3fa9bd,0 8px 14px rgba(0,0,0,.35);}
+  .btn.pink{background:linear-gradient(180deg,#ffc2e0,#ff9ecd);box-shadow:0 5px 0 #c96496,0 8px 14px rgba(0,0,0,.35);}
+  .btn.green{background:linear-gradient(180deg,#bff0b0,#8ee87e);box-shadow:0 5px 0 #4fa53f,0 8px 14px rgba(0,0,0,.35);}
+  .btn.purple{background:linear-gradient(180deg,#d9b8ff,#b98aff);box-shadow:0 5px 0 #7a4fc9,0 8px 14px rgba(0,0,0,.35);}
+  .btn.orange{background:linear-gradient(180deg,#ffb98a,#ff8f4d);box-shadow:0 5px 0 #c95f1f,0 8px 14px rgba(0,0,0,.35);}
+  .btn.off{filter:grayscale(.7) brightness(.75);}
+  .speed{display:flex;align-items:center;gap:7px;color:#e9deff;font-size:14px;}
+  .speed .sv{min-width:48px;text-align:center;color:#ffe08a;font-family:'Jua';font-size:13px;}
+  .speed input{-webkit-appearance:none;appearance:none;width:96px;height:10px;border-radius:10px;
+    background:linear-gradient(90deg,#7ee8fa,#ff9ecd);outline:none;cursor:pointer;}
+  .speed input::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;
+    background:#fff;border:3px solid #ffd166;box-shadow:0 3px 8px rgba(0,0,0,.4);cursor:pointer;}
+  .speed input::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #ffd166;cursor:pointer;}
+
+  .card{position:absolute;top:50%;left:50%;transform:translate(-50%,-46%) scale(.8);z-index:20;
+    width:min(90vw,410px);opacity:0;visibility:hidden;pointer-events:none;background:var(--panel);backdrop-filter:blur(16px);
+    border:3px solid var(--panel-edge);border-radius:30px;padding:22px 22px 20px;text-align:center;
+    box-shadow:0 22px 70px rgba(0,0,0,.65);transition:opacity .28s,transform .28s cubic-bezier(.34,1.56,.64,1);}
+  .card.show{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,-50%) scale(1);}
+  .card .emoji{font-size:56px;line-height:1;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5));animation:bob 3s ease-in-out infinite;}
+  @keyframes bob{50%{transform:translateY(-8px)}}
+  .card h2{font-size:28px;margin:6px 0 2px;}
+  .card .sub{font-family:'Gaegu';font-size:16px;color:#c9b8ff;margin-bottom:12px;}
+  .facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+  .fact{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);border-radius:15px;padding:8px 5px;}
+  .fact .k{font-family:'Gaegu';font-size:13px;color:#9fb6ff;}
+  .fact .v{font-size:16px;margin-top:1px;}
+  .wow{font-family:'Gaegu';font-size:18px;line-height:1.5;color:#ffe6b0;background:rgba(255,209,102,.1);
+    border:2px dashed rgba(255,209,102,.4);border-radius:18px;padding:12px 14px;}
+  .wow b{color:#ffd166;}
+  .gobtn{margin-top:13px;font-family:'Jua';font-size:18px;color:#08303a;cursor:pointer;border:none;
+    border-radius:18px;padding:12px 18px;width:100%;background:linear-gradient(180deg,#a9f0ff,#7ee8fa);box-shadow:0 5px 0 #3fa9bd;}
+  .gobtn:active{transform:translateY(4px);box-shadow:0 1px 0 #3fa9bd;}
+  .delbtn{display:none;margin-top:9px;font-family:'Jua';font-size:16px;color:#fff;cursor:pointer;border:none;
+    border-radius:16px;padding:10px 18px;width:100%;background:linear-gradient(180deg,#ff9e9e,#ff6b6b);box-shadow:0 5px 0 #c94a4a;}
+  .delbtn:active{transform:translateY(4px);box-shadow:0 1px 0 #c94a4a;}
+  .close{position:absolute;top:12px;right:14px;width:38px;height:38px;border-radius:50%;border:none;
+    cursor:pointer;font-family:'Jua';font-size:20px;color:#2a1a4a;background:#ff9ecd;box-shadow:0 4px 0 #c96496;}
+  .close:active{transform:translateY(3px);box-shadow:0 1px 0 #c96496;}
+
+  .quiz{position:absolute;top:50%;right:14px;transform:translate(30px,-50%) scale(.94);z-index:30;
+    width:min(90vw,340px);opacity:0;visibility:hidden;pointer-events:none;background:var(--panel);backdrop-filter:blur(16px);
+    border:3px solid rgba(185,138,255,.55);border-radius:26px;padding:16px 15px 18px;text-align:center;
+    box-shadow:0 22px 70px rgba(0,0,0,.7);transition:opacity .28s,transform .28s cubic-bezier(.34,1.56,.64,1);}
+  .quiz.show{opacity:1;visibility:visible;pointer-events:auto;transform:translate(0,-50%) scale(1);}
+  .quiz .score{font-family:'Gaegu';font-size:17px;color:#ffd166;margin-bottom:4px;}
+  .quiz .qemoji{font-size:46px;line-height:1;animation:bob 3s ease-in-out infinite;}
+  .quiz .q{font-size:19px;margin:6px 0 3px;line-height:1.25;}
+  .quiz .qhint{font-family:'Gaegu';font-size:15px;color:#c9b8ff;min-height:20px;margin-bottom:12px;}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .opt{font-family:'Jua';font-size:19px;color:#2a1a4a;cursor:pointer;border:none;border-radius:18px;
+    padding:16px 8px;background:linear-gradient(180deg,#e9dcff,#c9b3ff);box-shadow:0 5px 0 #8a6fc9;transition:transform .08s,box-shadow .08s;}
+  .opt:active{transform:translateY(4px);box-shadow:0 1px 0 #8a6fc9;}
+  .opt.correct{background:linear-gradient(180deg,#bff0b0,#7de07e);box-shadow:0 5px 0 #4fa53f;animation:pop .4s;}
+  .opt.wrong{background:linear-gradient(180deg,#ffc2c2,#ff9e9e);box-shadow:0 5px 0 #c96464;animation:shake .4s;}
+  @keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+
+  .hint{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 60px);left:50%;
+    transform:translateX(-50%);z-index:9;font-family:'Gaegu';font-size:15px;color:#bda9ff;
+    background:rgba(20,12,42,.55);border:1.5px solid rgba(178,150,255,.25);padding:6px 16px;
+    border-radius:20px;pointer-events:none;text-align:center;max-width:90vw;transition:opacity .3s;}
+  .hint.pulse{animation:pulse 2.2s ease-in-out infinite;}
+  @keyframes pulse{50%{opacity:.4}}
+  .hint.hide{opacity:0;}
+  .backbtn{position:absolute;left:50%;transform:translateX(-50%);z-index:11;
+    top:calc(max(12px,env(safe-area-inset-top)) + 58px);font-family:'Jua';font-size:15px;color:#08303a;
+    cursor:pointer;border:none;border-radius:18px;padding:9px 16px;display:none;
+    background:linear-gradient(180deg,#a9f0ff,#7ee8fa);box-shadow:0 5px 0 #3fa9bd;}
+  .backbtn.show{display:block;}
+  .backbtn:active{transform:translateX(-50%) translateY(3px);box-shadow:0 1px 0 #3fa9bd;}
+  .credit{position:absolute;right:8px;bottom:2px;z-index:5;font-family:'Gaegu';font-size:10px;
+    color:rgba(200,184,255,.4);pointer-events:none;}
+
+  /* ===== 공통 오버레이(시트) ===== */
+  .sheet{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+    background:rgba(6,3,18,0.72);backdrop-filter:blur(6px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .3s;}
+  .sheet.show{opacity:1;visibility:visible;pointer-events:auto;}
+  .box{width:min(94vw,560px);max-height:88vh;overflow:auto;background:var(--panel);border:3px solid var(--panel-edge);
+    border-radius:28px;padding:20px;box-shadow:0 22px 70px rgba(0,0,0,.7);text-align:center;position:relative;}
+  .box h2{font-size:26px;margin-bottom:4px;background:linear-gradient(90deg,#ffd166,#ff9ecd,#7ee8fa);
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .box .sub{font-family:'Gaegu';font-size:15px;color:#c9b8ff;margin-bottom:14px;}
+
+  /* 특별 메뉴 */
+  .special{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .special button{font-family:'Jua';font-size:18px;color:#2a1a4a;cursor:pointer;border:none;border-radius:20px;
+    padding:20px 10px;line-height:1.3;box-shadow:0 5px 0 rgba(0,0,0,.3);transition:transform .08s;}
+  .special button:active{transform:translateY(4px);}
+  .special .big{font-size:34px;display:block;margin-bottom:4px;}
+  .sp1{background:linear-gradient(180deg,#ffe08a,#ffc24d);} .sp2{background:linear-gradient(180deg,#c9b3ff,#9d7bff);color:#fff;}
+  .sp3{background:linear-gradient(180deg,#a9f0ff,#6fd8ee);} .sp4{background:linear-gradient(180deg,#ffc2e0,#ff9ecd);}
+
+  /* 도감 */
+  .dexgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px;}
+  .dexcell{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);border-radius:14px;
+    padding:8px 3px;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .dexcell .ic{font-size:26px;}
+  .dexcell .nm{font-family:'Gaegu';font-size:12px;color:#e9deff;}
+  .dexcell.locked{filter:grayscale(1) brightness(.5);}
+  .dexcell.locked .nm{color:#8a7fb0;}
+  .dexbar{font-family:'Jua';font-size:18px;color:#ffd166;margin-bottom:12px;}
+
+  /* 내 행성 만들기 */
+  .crow{margin:10px 0;}
+  .crow .lbl{font-family:'Gaegu';font-size:15px;color:#9fb6ff;margin-bottom:5px;}
+  .swatches{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+  .sw{width:34px;height:34px;border-radius:50%;cursor:pointer;border:3px solid transparent;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+  .sw.sel{border-color:#fff;transform:scale(1.15);}
+  .pick{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+  .pick button{font-family:'Jua';font-size:15px;color:#2a1a4a;border:none;border-radius:14px;padding:9px 15px;cursor:pointer;
+    background:linear-gradient(180deg,#e9dcff,#c9b3ff);box-shadow:0 4px 0 #8a6fc9;}
+  .pick button.sel{background:linear-gradient(180deg,#bff0b0,#7de07e);box-shadow:0 4px 0 #4fa53f;}
+  .cpreview{width:90px;height:90px;border-radius:50%;margin:6px auto;box-shadow:inset -10px -10px 22px rgba(0,0,0,.5),0 0 22px rgba(255,255,255,.15);}
+  .cname{font-family:'Jua';font-size:18px;text-align:center;padding:10px;border-radius:14px;border:2px solid var(--panel-edge);
+    background:rgba(255,255,255,.08);color:#fff;width:70%;margin:0 auto;display:block;user-select:text;-webkit-user-select:text;}
+  .launch{margin-top:14px;font-family:'Jua';font-size:20px;color:#08303a;border:none;border-radius:18px;padding:13px 26px;cursor:pointer;
+    background:linear-gradient(180deg,#a9f0ff,#7ee8fa);box-shadow:0 5px 0 #3fa9bd;}
+  .launch:active{transform:translateY(4px);box-shadow:0 1px 0 #3fa9bd;}
+
+  /* 우주 크기 여행 & 블랙홀 (캔버스 씬) */
+  #cosmic,#earthScene,#arrivalScene{position:absolute;inset:0;z-index:45;background:#03010a;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .35s;}
+  #cosmic.show,#earthScene.show,#arrivalScene.show{opacity:1;visibility:visible;pointer-events:auto;}
+  #cosmicCanvas,#earthCanvas,#arrivalCanvas{position:absolute;inset:0;width:100%;height:100%;}
+  .arrbtn{display:none;margin-top:9px;font-family:'Jua';font-size:17px;color:#0a2438;cursor:pointer;border:none;
+    border-radius:16px;padding:11px 18px;width:100%;background:linear-gradient(180deg,#a9e0ff,#5db8f5);box-shadow:0 5px 0 #2e7ec9;}
+  .arrbtn:active{transform:translateY(4px);box-shadow:0 1px 0 #2e7ec9;}
+  .arrFacts{position:absolute;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);width:min(560px,92vw);
+    background:rgba(10,8,26,.72);border:2px solid rgba(255,255,255,.16);border-radius:20px;padding:14px 16px;
+    opacity:0;transition:opacity .4s,transform .4s;pointer-events:none;backdrop-filter:blur(4px);text-shadow:0 1px 6px rgba(0,0,0,.7);}
+  .arrFacts.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .arrFacts .arow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:9px;}
+  .arrFacts .af{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);border-radius:13px;padding:6px 5px;text-align:center;}
+  .arrFacts .af .k{font-family:'Gaegu';font-size:12px;color:#9fb6ff;}
+  .arrFacts .af .v{font-size:15px;margin-top:1px;}
+  .arrFacts .danger{font-family:'Gaegu';font-size:16px;color:#ffc7b0;background:rgba(255,90,60,.14);
+    border-radius:12px;padding:8px 10px;margin-bottom:7px;line-height:1.4;}
+  .arrFacts .awow{font-family:'Gaegu';font-size:16px;color:#ffe6b0;line-height:1.4;}
+  .arrFacts b{color:#ffd166;}
+  @media(max-width:520px){.arrFacts{bottom:86px;} .arrFacts .arow{grid-template-columns:1fr 1fr;}}
+  .sp5{background:linear-gradient(180deg,#ffd0a0,#ff9e5a);}
+  .spwide{grid-column:1/-1;}
+  .cnav .szn.on{background:linear-gradient(180deg,#bff0b0,#7de07e);box-shadow:0 5px 0 #4fa53f;}
+  .earthbtn{display:none;margin-top:9px;font-family:'Jua';font-size:17px;color:#3a2410;cursor:pointer;border:none;
+    border-radius:16px;padding:11px 18px;width:100%;background:linear-gradient(180deg,#ffe0a0,#ffb84d);box-shadow:0 5px 0 #c9862e;}
+  .earthbtn:active{transform:translateY(4px);box-shadow:0 1px 0 #c9862e;}
+  .cosmicUI{position:absolute;inset:0;z-index:2;pointer-events:none;}
+  .cosmicTitle{position:absolute;top:max(16px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+    text-align:center;pointer-events:none;text-shadow:0 2px 14px rgba(0,0,0,.8);}
+  .cosmicTitle h3{font-size:clamp(22px,5vw,38px);color:#fff;}
+  .cosmicTitle p{font-family:'Gaegu';font-size:clamp(14px,2.6vw,19px);color:#ffe6b0;margin-top:4px;max-width:90vw;}
+  .cnav{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+    display:flex;gap:12px;pointer-events:auto;}
+  .cnav button{font-family:'Jua';font-size:18px;color:#2a1a4a;border:none;border-radius:18px;padding:12px 22px;cursor:pointer;
+    background:linear-gradient(180deg,#ffe08a,#ffd166);box-shadow:0 5px 0 #c99a2e;}
+  .cnav button:active{transform:translateY(4px);box-shadow:0 1px 0 #c99a2e;}
+  .cnav .exit{background:linear-gradient(180deg,#ffc2e0,#ff9ecd);box-shadow:0 5px 0 #c96496;}
+  .sp6{background:linear-gradient(180deg,#a9c8ff,#5d8bf5);}
+  /* 우주선 그랜드 투어 HUD */
+  #tourHud{position:absolute;inset:0;z-index:40;pointer-events:none;display:none;}
+  #tourHud.show{display:block;}
+  .thud-top{position:absolute;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+    background:rgba(10,12,30,.6);border:2px solid rgba(140,190,255,.35);border-radius:16px;padding:8px 18px;
+    text-align:center;color:#eaf2ff;font-family:'Jua';font-size:clamp(14px,2.4vw,18px);text-shadow:0 1px 6px rgba(0,0,0,.7);backdrop-filter:blur(3px);}
+  .thud-line{line-height:1.5;} .thud-line b{color:#9fd8ff;}
+  #tourFlash{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%) scale(.6);opacity:0;
+    font-family:'Jua';font-size:clamp(26px,6vw,52px);color:#fff;text-align:center;
+    text-shadow:0 0 24px #ffd166,0 2px 10px rgba(0,0,0,.8);transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;}
+  #tourFlash.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
+  /* 1인칭 조종석: 화면은 그대로 3D 우주를 보여주되, 우주선 안에서 보는 느낌을 더한다. */
+  #cockpitHud{position:absolute;inset:0;display:none;pointer-events:none;z-index:1;overflow:hidden;
+    background:linear-gradient(90deg,rgba(2,7,18,.72),transparent 17%,transparent 83%,rgba(2,7,18,.72));}
+  #cockpitHud.show{display:block;}
+  #cockpitHud:before,#cockpitHud:after{content:'';position:absolute;top:0;width:12%;height:100%;border:3px solid rgba(142,211,255,.3);}
+  #cockpitHud:before{left:0;border-right:0;border-radius:0 42px 42px 0;}
+  #cockpitHud:after{right:0;border-left:0;border-radius:42px 0 0 42px;}
+  #cockpitReticle{position:absolute;left:50%;top:50%;width:28px;height:28px;transform:translate(-50%,-50%);border:2px solid rgba(170,235,255,.82);border-radius:50%;box-shadow:0 0 12px rgba(110,210,255,.7);}
+  #cockpitReticle:before,#cockpitReticle:after{content:'';position:absolute;background:rgba(170,235,255,.82);}
+  #cockpitReticle:before{width:2px;height:42px;left:11px;top:-9px;}
+  #cockpitReticle:after{height:2px;width:42px;top:11px;left:-9px;}
+  #cockpitLabel{position:absolute;left:50%;bottom:27%;transform:translateX(-50%);font-family:'Jua';font-size:clamp(13px,2vw,16px);letter-spacing:1px;color:#aee8ff;text-shadow:0 1px 5px #000;white-space:nowrap;}
+  .cockpitTop{position:absolute;left:13%;right:13%;top:-30px;height:72px;border-radius:0 0 45% 45%;background:linear-gradient(#101b31,#253b57 62%,#82b9d0);box-shadow:0 7px 22px #000;}
+  .cockpitStrut{position:absolute;top:0;width:34px;height:78%;background:linear-gradient(90deg,#101827,#4d6b80,#111a29);box-shadow:0 0 18px #000;transform-origin:top;}
+  .cockpitStrut.left{left:17%;transform:rotate(-11deg)} .cockpitStrut.right{right:17%;transform:rotate(11deg)}
+  .cockpitDash{position:absolute;left:-3%;right:-3%;bottom:-18px;height:25%;min-height:150px;border-radius:45% 45% 0 0;background:linear-gradient(#334b60 0,#142134 16%,#080e1b 75%);border-top:6px solid #7796a8;box-shadow:0 -10px 35px rgba(0,0,0,.9);}
+  .cockpitScreen{position:absolute;left:50%;top:26px;transform:translateX(-50%);width:min(44vw,360px);height:72px;border:3px solid #537891;border-radius:16px;background:linear-gradient(180deg,rgba(28,104,136,.75),rgba(6,28,49,.92));box-shadow:inset 0 0 22px #4ccfff,0 0 12px rgba(76,207,255,.35);color:#bdefff;font-family:'Jua';display:flex;align-items:center;justify-content:space-around;font-size:clamp(12px,2vw,17px);}
+  .cockpitGauge{position:absolute;top:35px;width:54px;height:54px;border:5px solid #54768b;border-radius:50%;background:radial-gradient(circle,#66dbff 0 9%,#13263a 12% 55%,#8aabba 58% 62%,#0b1321 65%);box-shadow:0 0 12px rgba(90,210,255,.45);}
+  .cockpitGauge.g1{left:16%}.cockpitGauge.g2{right:16%}
+  .thud-nav{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+    display:flex;gap:10px;pointer-events:auto;flex-wrap:wrap;justify-content:center;max-width:96vw;}
+  .thud-nav button{font-family:'Jua';font-size:clamp(14px,2.2vw,17px);color:#0a1a3a;border:none;border-radius:16px;
+    padding:11px 18px;cursor:pointer;background:linear-gradient(180deg,#bfe0ff,#7ec2f5);box-shadow:0 5px 0 #3f8ac9;}
+  .thud-nav button:active{transform:translateY(4px);box-shadow:0 1px 0 #3f8ac9;}
+  .thud-nav .exit{background:linear-gradient(180deg,#ffc2e0,#ff9ecd);box-shadow:0 5px 0 #c96496;}
+  .thud-sub b{color:#ffe08a;}
+  /* 목적지 고르기 패널 */
+  #destPicker{position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    display:none;flex-wrap:wrap;gap:8px;justify-content:center;align-content:flex-start;
+    width:min(42vw,286px);max-height:82vh;overflow-y:auto;pointer-events:auto;
+    background:rgba(10,12,32,.82);border:2px solid rgba(140,190,255,.5);border-radius:22px;
+    padding:14px 12px;backdrop-filter:blur(4px);box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:3;}
+  #destPicker.show{display:flex;}
+  #destPicker .phead{width:100%;text-align:center;font-family:'Jua';font-size:clamp(15px,2.4vw,20px);color:#eaf2ff;margin-bottom:2px;}
+  /* 목적지 고르는 동안엔 코너 버튼(부스터/스윙) 숨김 — 태양계가 잘 보이게 */
+  #tourHud.picking #boostTap,#tourHud.picking #swingTap{display:none!important;}
+  .destBtn{font-family:'Jua';font-size:clamp(13px,2vw,16px);color:#12224a;border:none;border-radius:16px;
+    padding:10px 8px;width:96px;cursor:pointer;background:linear-gradient(180deg,#eaf3ff,#c3ddff);
+    box-shadow:0 4px 0 #6f9fd6;display:flex;flex-direction:column;align-items:center;gap:3px;transition:transform .08s;}
+  .destBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #6f9fd6;}
+  .destBtn .de{font-size:30px;line-height:1;}
+  .destBtn.moon{background:linear-gradient(180deg,#fff1cf,#ffe0a0);box-shadow:0 4px 0 #d0a85a;}
+  .destBtn.found{outline:2px solid #7CFFB2;}
+  .destBtn .dn{font-size:13px;}
+  /* 스윙바이 타이밍 부스트 버튼 */
+  #swingTap{position:absolute;right:max(20px,env(safe-area-inset-right));bottom:120px;
+    width:118px;height:118px;border-radius:50%;border:none;cursor:pointer;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:auto;
+    font-family:'Jua';color:#3a2400;background:radial-gradient(circle at 40% 35%,#fff0b0,#ffcf5a);
+    box-shadow:0 0 0 0 rgba(255,209,102,.6),0 8px 20px rgba(0,0,0,.4);transition:transform .08s;}
+  #swingTap .big{font-size:40px;line-height:1;} #swingTap .lbl{font-size:16px;}
+  #swingTap.show{display:flex;}
+  #swingTap.armed{opacity:.55;filter:grayscale(.4);}
+  #swingTap.hot{opacity:1;filter:none;animation:swingPulse .5s ease-in-out infinite;}
+  #swingTap:active{transform:scale(.92);}
+  @keyframes swingPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,209,102,.7),0 8px 20px rgba(0,0,0,.4);transform:scale(1);}
+    50%{box-shadow:0 0 0 22px rgba(255,209,102,0),0 8px 20px rgba(0,0,0,.4);transform:scale(1.08);}}
+  #boostTap{position:absolute;left:max(20px,env(safe-area-inset-left));bottom:120px;
+    width:118px;height:118px;border-radius:50%;border:none;cursor:pointer;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:1px;pointer-events:auto;
+    font-family:'Jua';color:#fff;background:radial-gradient(circle at 40% 35%,#ff9d5a,#ff5a3c);
+    box-shadow:0 8px 20px rgba(0,0,0,.4);transition:transform .08s;}
+  #boostTap.show{display:flex;}
+  #boostTap .big{font-size:38px;line-height:1;} #boostTap .lbl{font-size:15px;}
+  #boostTap:active{transform:scale(.92);}
+  #boostTap.empty{opacity:.5;filter:grayscale(.5);}
+  #boostTap .fuel{width:74px;height:8px;border-radius:5px;background:rgba(0,0,0,.35);margin-top:3px;overflow:hidden;}
+  #boostTap .fuel i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ffe08a,#fff);transition:width .1s;}
+  #landAsk,#flybyAsk{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;
+    background:rgba(12,20,48,.92);border:2px solid #7CFFB2;border-radius:22px;padding:16px 18px;
+    display:none;flex-wrap:wrap;gap:12px;justify-content:center;max-width:min(92vw,460px);pointer-events:auto;}
+  #flybyAsk{top:62%;border-color:#8fd6ff;background:rgba(10,24,44,.9);}
+  #landAsk.show,#flybyAsk.show{display:flex;}
+  #landAsk .phead,#flybyAsk .phead{width:100%;text-align:center;font-family:'Jua';font-size:clamp(17px,3.4vw,24px);color:#eaf2ff;}
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <canvas id="fx"></canvas>
+  <div id="labels"></div>
+
+  <div id="load"><div class="sun"></div><p>우주를 준비하고 있어요…</p></div>
+
+  <div class="title">
+    <h1>반짝반짝 우리 태양계</h1>
+    <p>우주를 돌려보고, 행성을 콕! 눌러봐요 ✨</p>
+  </div>
+
+  <div class="hint pulse" id="hint">🪐 행성을 눌러 알아보기 · 두 번 누르면 가까이!</div>
+  <button class="backbtn" id="backBtn">🌍 전체 보기로</button>
+
+  <div class="dock">
+    <button class="btn" id="playBtn">⏸ 멈춤</button>
+    <div class="speed"><span>🐢</span><input type="range" id="speed" min="0" max="300" value="100"><span>🚀</span><span class="sv" id="speedValue">1일/초</span></div>
+    <button class="btn sky" id="labelBtn">이름표</button>
+    <button class="btn pink" id="orbitBtn">궤도선</button>
+    <button class="btn sky" id="axisBtn">🧭 자전축</button>
+    <button class="btn orange" id="modeBtn">🔭 실제 비율</button>
+    <button class="btn" id="soundBtn">🔊 소리</button>
+    <button class="btn sky" id="meteorBtn">🌠 유성우</button>
+    <button class="btn purple" id="quizBtn">🎮 퀴즈</button>
+    <button class="btn green" id="tourBtn">🚀 탐험 게임</button>
+    <button class="btn purple" id="specialBtn">✨ 특별</button>
+    <button class="btn green" id="homeBtn">↺ 처음</button>
+  </div>
+
+  <div class="card" id="card">
+    <button class="close" id="closeBtn">✕</button>
+    <div class="emoji" id="cEmoji">🪐</div>
+    <h2 id="cName">행성</h2>
+    <div class="sub" id="cSub"></div>
+    <div class="facts" id="cFacts"></div>
+    <div class="wow" id="cWow"></div>
+    <button class="gobtn" id="focusBtn">🔍 가까이 가기</button>
+    <button class="arrbtn" id="arriveBtn">🚀 착륙해서 환경 체험</button>
+    <button class="earthbtn" id="earthBtn">🌅 지구의 하루와 계절 체험</button>
+    <button class="delbtn" id="delBtn">🗑️ 이 행성 지우기</button>
+  </div>
+
+  <div class="quiz" id="quiz">
+    <button class="close" id="quizClose">✕</button>
+    <div class="score" id="quizScore">⭐ 0개</div>
+    <div class="qemoji" id="quizEmoji">❓</div>
+    <div class="q" id="quizQ">문제</div>
+    <div class="qhint" id="quizHint"></div>
+    <div class="opts" id="quizOpts"></div>
+  </div>
+
+  <!-- 특별 메뉴 -->
+  <div class="sheet" id="specialSheet">
+    <div class="box">
+      <button class="close" id="specialClose">✕</button>
+      <h2>✨ 특별한 우주 탐험</h2>
+      <div class="sub">무엇을 해볼까요?</div>
+      <div class="special">
+        <button class="sp1" id="openJourney"><span class="big">🌠</span>우주 크기 여행</button>
+        <button class="sp2" id="openBlackhole"><span class="big">🕳️</span>블랙홀 체험</button>
+        <button class="sp3" id="openCreator"><span class="big">🎨</span>내 행성 만들기</button>
+        <button class="sp4" id="openDex"><span class="big">📖</span>우주 도감</button>
+        <button class="sp5 spwide" id="openEarth"><span class="big">🌅</span>지구의 하루와 계절</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 도감 -->
+  <div class="sheet" id="dexSheet">
+    <div class="box">
+      <button class="close" id="dexClose">✕</button>
+      <h2>📖 우주 도감</h2>
+      <div class="dexbar" id="dexBar">0개 모았어요!</div>
+      <div class="dexgrid" id="dexGrid"></div>
+      <div class="sub" style="margin-top:12px">행성을 눌러 살펴보면 도감이 채워져요 ⭐</div>
+    </div>
+  </div>
+
+  <!-- 내 행성 만들기 -->
+  <div class="sheet" id="creatorSheet">
+    <div class="box">
+      <button class="close" id="creatorClose">✕</button>
+      <h2>🎨 내 행성 만들기</h2>
+      <div class="cpreview" id="cPreview"></div>
+      <div class="crow"><div class="lbl">🎨 색깔</div><div class="swatches" id="cSwatches"></div></div>
+      <div class="crow"><div class="lbl">📏 크기</div><div class="pick" id="cSize"></div></div>
+      <div class="crow"><div class="lbl">💍 고리</div><div class="pick" id="cRing"></div></div>
+      <div class="crow"><div class="lbl">✏️ 이름</div><input class="cname" id="cName2" maxlength="6" value="반짝이"></div>
+      <button class="launch" id="cLaunch">🚀 발사!</button>
+    </div>
+  </div>
+
+  <!-- 우주 크기 여행 / 블랙홀 (캔버스 씬) -->
+  <div id="cosmic">
+    <canvas id="cosmicCanvas"></canvas>
+    <div class="cosmicUI">
+      <div class="cosmicTitle"><h3 id="cosmicName">태양</h3><p id="cosmicFact"></p></div>
+      <div class="cnav">
+        <button id="cosmicPrev">◀ 이전</button>
+        <button id="cosmicNext">다음 ▶</button>
+        <button class="exit" id="cosmicExit">✕ 나가기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 지구의 하루와 계절 (캔버스 씬) -->
+  <div id="earthScene">
+    <canvas id="earthCanvas"></canvas>
+    <div class="cosmicUI">
+      <div class="cosmicTitle"><h3 id="earthTitle">🌍 지구의 하루</h3><p id="earthInfo"></p></div>
+      <div class="cnav">
+        <button class="szn" id="eSpring">🌸 봄</button>
+        <button class="szn" id="eSummer">☀️ 여름</button>
+        <button class="szn" id="eAutumn">🍂 가을</button>
+        <button class="szn" id="eWinter">❄️ 겨울</button>
+        <button class="exit" id="earthExit">✕ 나가기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 우주선 착륙 & 행성 환경 체험 (캔버스 씬) -->
+  <div id="arrivalScene">
+    <canvas id="arrivalCanvas"></canvas>
+    <div class="cosmicUI">
+      <div class="cosmicTitle"><h3 id="arrTitle">🚀 도착!</h3><p id="arrPhase"></p></div>
+      <div class="arrFacts" id="arrFacts"></div>
+      <div class="cnav">
+        <button id="arrReplay">🔁 다시 진입</button>
+        <button id="arrTravel">🚀 다른 곳 탐험</button>
+        <button id="arrNext">다음 ▶</button>
+        <button class="exit" id="arrExit">✕ 나가기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🚀 우주선 탐험 게임 HUD -->
+  <div id="tourHud">
+    <div class="thud-top">
+      <div class="thud-line" id="gameStatus">🎯 어디로 날아갈까요?</div>
+      <div class="thud-line thud-sub">속도 <b id="tourSpeed">0</b> · 엔진 <b id="tourCount">0</b>번 · 여행 <b id="tourTime">0일</b> · 발견 <b id="discCount">1</b>곳</div>
+    </div>
+    <div id="destPicker"></div>
+    <div id="landAsk"><div class="phead" id="landAskT">🛬 착륙할까요?</div>
+      <button class="destBtn found" id="landYes"><span class="de">🛬</span><span class="dn">착륙!</span></button>
+      <button class="destBtn moon" id="landNo"><span class="de">🚀</span><span class="dn">다른 곳으로</span></button></div>
+    <div id="flybyAsk"><div class="phead" id="flybyT">🐢 근처!</div>
+      <button class="destBtn found" id="flybyLand"><span class="de">🛬</span><span class="dn">여기 착륙</span></button>
+      <button class="destBtn moon" id="flybyGo"><span class="de">🚀</span><span class="dn">계속 날기</span></button></div>
+    <div id="tourFlash"></div>
+    <div id="cockpitHud"><div class="cockpitTop"></div><div class="cockpitStrut left"></div><div class="cockpitStrut right"></div><div id="cockpitReticle"></div><div id="cockpitLabel">🕹️ 우주선 조종석 · 앞을 보고 있어요</div><div class="cockpitDash"><div class="cockpitGauge g1"></div><div class="cockpitScreen"><span>🚀 항법 정상</span><span>🌌 자동 비행</span></div><div class="cockpitGauge g2"></div></div></div>
+    <button id="boostTap"><span class="big">🔥</span><span class="lbl">부스터</span><span class="fuel"><i id="boostFuelBar"></i></span></button>
+    <button id="swingTap"><span class="big">🪐</span><span class="lbl">스윙!</span></button>
+    <div class="thud-nav">
+      <button id="tourPick">🎯 목적지</button>
+      <button id="tourLand">🛬 착륙</button>
+      <button id="tourPause">⏸ 멈춤</button>
+      <button id="tourView">🕹️ 우주선 1인칭</button>
+      <button class="exit" id="tourExit">✕ 끝내기</button>
+    </div>
+  </div>
+
+  <div class="credit">textures © Solar System Scope (CC BY 4.0) · 사진 NASA/JPL·ESA(PD), Venus © LPI(CC BY 2.0), Ganymede © B.Jónsson · Three.js</div>
+
+  <script>
+    function loadScript(srcs, cb){let i=0;(function next(){
+      if(i>=srcs.length){document.querySelector('#load p').textContent='라이브러리를 불러오지 못했어요 😢';return;}
+      const s=document.createElement('script');s.src=srcs[i++];s.onload=cb;s.onerror=next;document.head.appendChild(s);})();}
+    function loadOptional(src,cb){const s=document.createElement('script');s.src=src;s.onload=cb;s.onerror=cb;document.head.appendChild(s);}
+    loadScript(['../lib/three.min.js','https://unpkg.com/three@0.128.0/build/three.min.js'],function(){
+      loadScript(['../lib/OrbitControls.js','https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js'],function(){
+        loadOptional('../lib/textures.js', start);});});
+  </script>
+
+<script>
+function start(){
+  "use strict";
+  const TWO=Math.PI*2, rnd=(a,b)=>a+Math.random()*(b-a);
+  const TEX=window.TEX||{};
+  // 실제 비율 상수: 1 AU = 1000 단위, 길이 단위 = km * KM
+  const AUU=1000, KM=1000/1.496e8;
+
+  // ============ 위성 데이터 (funR/funDist=탐험용, mk=반지름km, dk=행성거리km) ============
+  const EARTH_MOON=[{ko:'달',emoji:'🌙',funR:0.42,funDist:3.4,mk:1737,dk:384400,orbit:2.6,base:'#b6b0a6',style:'rock',realTex:'moon',
+    sub:'지구의 하나뿐인 친구',factList:[['소속','지구'],['거리','38만 km'],['특징','사람이 다녀옴'],['공전','27일']],
+    wow:'지구를 <b>빙글빙글</b> 도는 위성! 사람이 <b>발자국</b>을 남긴 유일한 곳이죠. 👣'}];
+  const MARS_MOONS=[
+    {ko:'포보스',emoji:'🥔',funR:0.14,funDist:2.0,mk:11,dk:9376,orbit:1.1,base:'#8a7d6e',style:'rock',inc:0.12,
+     sub:'화성의 감자 달',factList:[['소속','화성'],['크기','아주 작음'],['모양','감자처럼'],['공전','7시간']],
+     wow:'감자처럼 <b>울퉁불퉁</b>해요. 화성에 점점 <b>가까워지고</b> 있답니다.'},
+    {ko:'데이모스',emoji:'🪨',funR:0.11,funDist:2.7,mk:6,dk:23463,orbit:1.9,base:'#9a8d7e',style:'rock',inc:-0.09,
+     sub:'화성의 작은 달',factList:[['소속','화성'],['크기','더 작음'],['모양','울퉁불퉁'],['공전','30시간']],
+     wow:'화성의 <b>두 번째</b> 달이에요. 아주 작아 하늘의 <b>밝은 별</b>처럼 보여요.'}];
+  const JUP_MOONS=[
+    {ko:'이오',emoji:'🌋',funR:0.32,funDist:6.2,mk:1822,dk:421700,orbit:1.8,base:'#e8d24a',style:'volcano',inc:0.02,
+     sub:'화산이 가득한 달',factList:[['소속','목성'],['특징','화산 400개+'],['표면','노란 유황'],['공전','1.8일']],
+     wow:'태양계에서 <b>화산이 가장 많은</b> 곳! 유황 때문에 <b>노랗게</b> 보여요.'},
+    {ko:'유로파',emoji:'🧊',funR:0.28,funDist:7.9,mk:1561,dk:671034,orbit:2.6,base:'#e8eef2',style:'ice',inc:-0.03,realTex:'europaEq',
+     sub:'얼음 아래 바다',factList:[['소속','목성'],['표면','매끈한 얼음'],['숨은것','바다!'],['공전','3.5일']],
+     wow:'얼음 껍질 <b>아래에 바다</b>가 있어요. <b>생명</b>이 살 수 있을지 궁금해해요!'},
+    {ko:'가니메데',emoji:'🌑',funR:0.5,funDist:9.9,mk:2634,dk:1070412,orbit:3.7,base:'#b3a894',style:'rock',inc:0.03,realTex:'ganymedeEq',
+     sub:'가장 큰 위성',factList:[['소속','목성'],['크기','수성보다 큼!'],['특징','자기장 있음'],['공전','7일']],
+     wow:'태양계에서 <b>가장 큰</b> 위성이에요. 행성인 <b>수성보다도</b> 커요!'},
+    {ko:'칼리스토',emoji:'⚫',funR:0.46,funDist:12.2,mk:2410,dk:1882709,orbit:5,base:'#7a6f60',style:'rock',inc:-0.02,realTex:'callistoEq',
+     sub:'크레이터투성이 달',factList:[['소속','목성'],['표면','크레이터 가득'],['나이','아주 늙음'],['공전','17일']],
+     wow:'온몸이 <b>크레이터</b>로 뒤덮인, 아주 <b>오래된</b> 달이에요.'}];
+  const SAT_MOONS=[
+    {ko:'엔셀라두스',emoji:'❄️',funR:0.18,funDist:8.9,mk:252,dk:238040,orbit:2,base:'#ffffff',style:'ice',inc:0.05,
+     sub:'물을 뿜는 얼음달',factList:[['소속','토성'],['특징','물 분수!'],['표면','새하얀 얼음'],['공전','1.4일']],
+     wow:'남극에서 <b>물기둥</b>을 우주로 뿜어요! 얼음 아래 <b>바다</b>가 있대요. 💦'},
+    {ko:'타이탄',emoji:'🟠',funR:0.5,funDist:11.5,mk:2575,dk:1221870,orbit:5.5,base:'#e0a94a',style:'haze',inc:-0.04,realTex:'titanEq',
+     sub:'두꺼운 대기의 달',factList:[['소속','토성'],['크기','2번째로 큼'],['특징','메탄 호수'],['대기','아주 두꺼움']],
+     wow:'두꺼운 <b>공기</b>에 싸여 있고, <b>메탄으로 된 호수</b>와 강이 있어요! 아주 신기해요.'},
+    {ko:'미마스',emoji:'🌑',funR:0.15,funDist:6.6,mk:198,dk:185540,orbit:1.2,base:'#c9c4bc',style:'rock',inc:0.03,
+     sub:'거대한 눈 크레이터',factList:[['소속','토성'],['특징','거대한 구덩이'],['모양','우주 눈알?'],['공전','22시간']],
+     wow:'한쪽에 <b>엄청 큰 크레이터</b>가 있어 꼭 <b>커다란 눈</b>처럼 보여요! 아주 작고 동그란 얼음달이에요. 👁️'},
+    {ko:'이아페투스',emoji:'🎱',funR:0.22,funDist:14,mk:735,dk:3560820,orbit:6.8,base:'#8a8074',style:'rock',inc:-0.06,
+     sub:'흑백 두 얼굴 달',factList:[['소속','토성'],['특징','반은 검고 반은 흼'],['모양','호두처럼 능선'],['공전','79일']],
+     wow:'한쪽은 <b>새까맣고</b> 다른 쪽은 <b>새하얀</b> 신기한 달! 허리에 <b>산맥 능선</b>이 둘러 호두처럼 생겼어요. 🖤🤍'}];
+  const URA_MOONS=[
+    {ko:'미란다',emoji:'🌑',funR:0.16,funDist:3.6,mk:236,dk:129390,orbit:1.6,base:'#a7a29a',style:'rock',inc:0.08,
+     sub:'절벽투성이 달',factList:[['소속','천왕성'],['특징','거대한 절벽'],['모양','짜깁기한 듯'],['공전','1.4일']],
+     wow:'태양계에서 <b>가장 높은 절벽</b>이 있어요. 조각을 <b>이어붙인</b> 듯한 신기한 달!'},
+    {ko:'티타니아',emoji:'⚪',funR:0.3,funDist:5.4,mk:789,dk:435910,orbit:3,base:'#9aa0a6',style:'ice',inc:-0.05,
+     sub:'천왕성의 큰 달',factList:[['소속','천왕성'],['크기','가장 큼'],['표면','얼음과 바위'],['공전','9일']],
+     wow:'천왕성의 <b>가장 큰</b> 달이에요. 얼음과 바위로 되어 있어요.'},
+    {ko:'오베론',emoji:'⚫',funR:0.28,funDist:7,mk:761,dk:583500,orbit:4,base:'#8f8a82',style:'rock',inc:0.04,
+     sub:'천왕성의 바깥 달',factList:[['소속','천왕성'],['크기','두 번째로 큼'],['표면','크레이터와 절벽'],['공전','13일']],
+     wow:'천왕성에서 <b>가장 바깥</b>을 도는 큰 달이에요. 어두운 표면에 <b>크레이터</b>가 가득해요.'}];
+  const NEP_MOONS=[
+    {ko:'트리톤',emoji:'🔵',funR:0.4,funDist:4.8,mk:1353,dk:354759,orbit:3,base:'#e8d0d8',style:'ice',inc:0.35,retro:true,
+     sub:'거꾸로 도는 달',factList:[['소속','해왕성'],['특징','거꾸로 돎!'],['표면','질소 얼음'],['공전','6일']],
+     wow:'다른 위성과 <b>반대 방향</b>으로 돌아요! <b>질소 간헐천</b>이 얼음을 뿜어요. 🧊'},
+    {ko:'네레이드',emoji:'🪨',funR:0.14,funDist:8,mk:170,dk:5513400,orbit:7,base:'#9a938a',style:'rock',inc:0.12,
+     sub:'길쭉한 궤도의 달',factList:[['소속','해왕성'],['특징','아주 찌그러진 궤도'],['크기','작음'],['공전','360일']],
+     wow:'궤도가 <b>아주 길쭉해서</b> 해왕성에 가까웠다 멀어졌다 해요. 태양계 위성 중 <b>가장 찌그러진</b> 길로 돌아요!'}];
+  const PLUTO_MOONS=[
+    {ko:'카론',emoji:'🌗',funR:0.36,funDist:2.6,mk:606,dk:19591,orbit:2.4,base:'#b8b0a4',style:'ice',inc:0.02,
+     sub:'명왕성의 짝꿍 달',factList:[['소속','명왕성'],['크기','명왕성의 절반!'],['특징','서로 마주 봄'],['공전','6.4일']],
+     wow:'명왕성의 <b>절반</b>이나 되는 커다란 달! 둘이 항상 <b>같은 면</b>을 마주 보며 춤추듯 돌아, 이중 천체라고 불러요. 💞'},
+    {ko:'닉스',emoji:'🪨',funR:0.12,funDist:4.0,mk:25,dk:48694,orbit:3.4,base:'#cfc8be',style:'ice',inc:0.05,
+     sub:'명왕성의 작은 달',factList:[['소속','명왕성'],['크기','아주 작음'],['특징','제멋대로 돎'],['공전','25일']],
+     wow:'럭비공처럼 생겨서 빙글빙글 <b>제멋대로 뒤집히며</b> 돌아요. 어디가 하늘일지 알 수 없대요!'},
+    {ko:'히드라',emoji:'🪨',funR:0.12,funDist:4.8,mk:25,dk:64738,orbit:4.2,base:'#d6d0c6',style:'ice',inc:-0.04,
+     sub:'명왕성의 바깥 작은 달',factList:[['소속','명왕성'],['크기','아주 작음'],['표면','깨끗한 얼음'],['공전','38일']],
+     wow:'명왕성에서 <b>가장 바깥</b>을 도는 작은 얼음 달이에요. 표면이 반짝이는 물 얼음이래요.'}];
+  const HAUMEA_MOONS=[
+    {ko:'히이아카',emoji:'⚪',funR:0.16,funDist:3.2,mk:160,dk:49880,orbit:3,base:'#eef2f4',style:'ice',inc:0.1,
+     sub:'하우메아의 큰 달',factList:[['소속','하우메아'],['크기','더 큼'],['표면','물 얼음'],['공전','49일']],
+     wow:'하우메아의 <b>바깥쪽 큰 달</b>이에요. 표면이 거의 <b>순수한 물 얼음</b>으로 덮여 있어요. 🧊'},
+    {ko:'나마카',emoji:'🪨',funR:0.11,funDist:2.2,mk:85,dk:25657,orbit:1.8,base:'#dfe6ea',style:'ice',inc:-0.13,
+     sub:'하우메아의 작은 달',factList:[['소속','하우메아'],['크기','더 작음'],['궤도','살짝 기울어짐'],['공전','18일']],
+     wow:'하우메아의 <b>안쪽 작은 달</b>이에요. 두 달이 함께 태어난 <b>가족</b>이랍니다.'}];
+  const MAKEMAKE_MOONS=[
+    {ko:'MK2',emoji:'⚫',funR:0.12,funDist:2.6,mk:88,dk:21000,orbit:2.2,base:'#3a332e',style:'rock',inc:0.06,
+     sub:'마케마케의 숯검정 달',factList:[['소속','마케마케'],['크기','작음'],['색깔','아주 검음'],['공전','약 12일']],
+     wow:'<b>숯처럼 새까만</b> 작은 달이에요. 2016년에야 발견된 <b>수줍은</b> 친구랍니다.'}];
+  const ERIS_MOONS=[
+    {ko:'디스노미아',emoji:'🌑',funR:0.18,funDist:3.0,mk:350,dk:37273,orbit:2.6,base:'#8a8078',style:'rock',inc:0.08,
+     sub:'에리스의 하나뿐인 달',factList:[['소속','에리스'],['크기','제법 큼'],['표면','어두운 바위'],['공전','16일']],
+     wow:'에리스를 도는 <b>유일한</b> 달이에요. 이 달 덕분에 에리스의 <b>무게</b>를 잴 수 있었대요. ⚖️'}];
+
+  // ============ 행성 & 왜소행성 (funR/funDist=탐험, rk=반지름km, au=거리AU) ============
+  // rotH=실제 자전주기(시간, 음수=거꾸로), yearN=실제 공전주기(년), inc=궤도 경사(라디안)
+  //   → 애니메이션의 자전/공전 속도는 아래 파생 계산에서 실제 주기로부터 만들어짐(과학적으로 정확한 비율)
+  const PLANETS=[
+    {ko:'수성',en:'Mercury',emoji:'☿️',type:'rock',base:'#9a8b76',realTex:'mercury',funR:0.9,funDist:18,rk:2440,au:0.387,tilt:0.03,rotH:1408,yearN:0.24,inc:0.122,tiltDeg:'0.03°(거의 똑바로)',incDeg:'7°',spinDir:'정방향',
+     moons:'0개',day:'59일',year:'88일',temp:'-170~430°C',sub:'태양과 가장 가까운 꼬마 행성',
+     wow:'태양을 <b>가장 빨리</b>(88일) 도는 행성! 그런데 하루(자전)는 무려 <b>59일</b>이나 걸려요. 공기가 없어 낮엔 펄펄, 밤엔 <b>꽁꽁</b> 얼어요!'},
+    {ko:'금성',en:'Venus',emoji:'🌕',type:'venus',base:'#d9a24a',realTex:'venus',funR:1.5,funDist:26,rk:6052,au:0.723,tilt:0.05,rotH:-5832,yearN:0.62,inc:0.059,tiltDeg:'177°(거의 뒤집힘)',incDeg:'3.4°',spinDir:'거꾸로!',
+     moons:'0개',day:'243일',year:'225일',temp:'약 465°C',sub:'가장 뜨겁고 거꾸로 도는 별',
+     wow:'태양계에서 제일 <b>뜨거운</b> 행성! 게다가 <b>거꾸로</b> 아주 천천히 돌아서, 하루(243일)가 1년(225일)보다 <b>더 길답니다</b>. 신기하죠? ✨'},
+    {ko:'지구',en:'Earth',emoji:'🌍',type:'earth',base:'#2b6bbf',realTex:'earth',funR:1.6,funDist:35,rk:6371,au:1.0,tilt:0.41,rotH:24,yearN:1.0,inc:0,tiltDeg:'23.4°',incDeg:'0°(기준면)',spinDir:'정방향',
+     moons:'1개',day:'24시간',year:'365일',temp:'평균 15°C',sub:'우리가 사는 파란 보석',hasCloud:true,sats:EARTH_MOON,
+     wow:'우리가 사는 곳! 축이 <b>23.4°</b> 기울어서 <b>사계절</b>이 생겨요. 물과 공기가 있어 <b>생명</b>이 살 수 있는 특별한 행성이에요. 💙'},
+    {ko:'화성',en:'Mars',emoji:'🔴',type:'mars',base:'#b5502f',realTex:'mars',funR:1.1,funDist:45,rk:3390,au:1.524,tilt:0.44,rotH:24.6,yearN:1.88,inc:0.032,tiltDeg:'25.2°',incDeg:'1.9°',spinDir:'정방향',
+     moons:'2개',day:'25시간',year:'687일',temp:'평균 -60°C',sub:'붉은 흙의 행성',sats:MARS_MOONS,
+     wow:'흙에 <b>철</b>이 녹슬어 빨개요! 축 기울기가 지구와 <b>비슷해서</b>(25°) 화성에도 <b>사계절</b>이 있어요. 사람이 놀러 갈 준비 중! 🚀'},
+    {ko:'세레스',en:'Ceres',emoji:'⚪',type:'ceres',base:'#9a938a',funR:0.5,funDist:57,rk:473,au:2.77,tilt:0.06,rotH:9.07,yearN:4.6,inc:0.185,tiltDeg:'4°',incDeg:'10.6°',spinDir:'정방향',isDwarf:true,
+     moons:'0개',day:'9시간',year:'4.6년',temp:'약 -105°C',sub:'소행성대의 왜소행성',
+     wow:'화성과 목성 사이 <b>소행성대</b>에서 가장 큰 천체(왜소행성)! 궤도가 살짝 기울어 있고, 표면 아래 <b>얼음</b>이 숨어 있을지 몰라요. ❄️'},
+    {ko:'목성',en:'Jupiter',emoji:'🟠',type:'jupiter',base:'#c9a066',realTex:'jupiter',bands:0.006,funR:4.2,funDist:74,rk:69911,au:5.203,tilt:0.05,rotH:9.93,yearN:11.86,inc:0.023,tiltDeg:'3.1°(거의 똑바로)',incDeg:'1.3°',spinDir:'정방향(가장 빠름!)',
+     moons:'95개',day:'10시간',year:'12년',temp:'약 -110°C',sub:'가장 큰 줄무늬 대장',sats:JUP_MOONS,
+     wow:'태양계에서 <b>제일 큰</b> 행성(지구 1300개)! 그런데 자전은 <b>가장 빨라서</b> 하루가 겨우 <b>10시간</b>이에요. 커다란 <b>대적점</b> 폭풍도 있어요.'},
+    {ko:'토성',en:'Saturn',emoji:'🪐',type:'saturn',base:'#d8bd82',realTex:'saturn',ring:true,bands:0.004,funR:3.6,funDist:100,rk:58232,au:9.537,tilt:0.47,rotH:10.7,yearN:29.46,inc:0.043,tiltDeg:'26.7°',incDeg:'2.5°',spinDir:'정방향',
+     moons:'274개',day:'11시간',year:'29년',temp:'약 -140°C',sub:'예쁜 고리를 두른 행성',sats:SAT_MOONS,
+     wow:'아름다운 <b>얼음 고리</b>를 둘렀어요. 축이 27° 기울어 고리가 비스듬히 보여요. 토성은 물에 <b>둥둥</b> 뜰 만큼 가벼워요!'},
+    {ko:'천왕성',en:'Uranus',emoji:'🔵',type:'ice',base:'#9fe3ea',realTex:'uranus',bands:0.0016,funR:2.4,funDist:124,rk:25362,au:19.191,tilt:1.7,rotH:-17.24,yearN:84,inc:0.013,tiltDeg:'97.8°(옆으로 누움)',incDeg:'0.8°',spinDir:'거꾸로!',
+     moons:'28개',day:'17시간',year:'84년',temp:'약 -195°C',sub:'옆으로 누워 도는 행성',sats:URA_MOONS,
+     wow:'몸을 <b>옆으로 눕혀</b> 데굴데굴 굴러가듯, 게다가 <b>거꾸로</b> 돌아요! 그래서 한쪽은 <b>42년 낮</b>, 42년 밤이 이어져요.'},
+    {ko:'해왕성',en:'Neptune',emoji:'🔷',type:'ice',base:'#3a5bd8',realTex:'neptune',bands:0.0022,funR:2.3,funDist:146,rk:24622,au:30.047,tilt:0.49,rotH:16.11,yearN:164.8,inc:0.031,tiltDeg:'28.3°',incDeg:'1.8°',spinDir:'정방향',
+     moons:'16개',day:'16시간',year:'165년',temp:'약 -200°C',sub:'가장 먼 바람의 행성',sats:NEP_MOONS,
+     wow:'태양에서 제일 <b>먼</b> 행성! 한 바퀴 도는 데 <b>165년</b>이나 걸려요. 세상에서 가장 빠른 <b>바람</b>이 씽씽 불어요. 💨'},
+    {ko:'명왕성',en:'Pluto',emoji:'🌑',type:'pluto',base:'#c9b39a',realTex:'plutoEq',funR:0.7,funDist:164,rk:1188,au:39.482,tilt:2.14,rotH:-153,yearN:248,inc:0.300,tiltDeg:'122.5°(옆으로 누움)',incDeg:'17.2°(많이 기욺)',spinDir:'거꾸로!',isDwarf:true,
+     moons:'5개',day:'6일',year:'248년',temp:'약 -230°C',sub:'저 멀리 얼음 왕국 (왜소행성)',sats:PLUTO_MOONS,
+     wow:'궤도가 <b>많이 기울고</b> 찌그러져 있어요. 그래서 행성에서 <b>왜소행성</b>이 됐죠. 짝꿍 <b>카론</b>과 서로 마주 보며 빙글빙글 춤춰요! 💫'},
+    {ko:'하우메아',en:'Haumea',emoji:'🥚',type:'ice',base:'#eef2f4',funR:0.9,funDist:178,rk:780,au:43.13,tilt:0.2,rotH:3.9,yearN:284,inc:0.492,tiltDeg:'약 126°',incDeg:'28°(많이 기욺)',spinDir:'정방향(초고속!)',isDwarf:true,egg:true,
+     moons:'2개',day:'4시간(가장 빠름!)',year:'284년',temp:'약 -240°C',sub:'럭비공처럼 생긴 얼음별',sats:HAUMEA_MOONS,
+     wow:'<b>4시간</b>만에 한 바퀴 도는 초고속 팽이! 너무 빨리 돌아 <b>럭비공</b>처럼 길쭉해졌어요. 작은 <b>고리</b>도 있답니다.'},
+    {ko:'마케마케',en:'Makemake',emoji:'🔴',type:'pluto',base:'#b07a5a',funR:0.75,funDist:190,rk:715,au:45.79,tilt:0.25,rotH:22.5,yearN:305,inc:0.506,tiltDeg:'기울어짐',incDeg:'29°(많이 기욺)',spinDir:'정방향',isDwarf:true,
+     moons:'1개',day:'22시간',year:'305년',temp:'약 -240°C',sub:'붉은빛 도는 얼음 왜소행성',sats:MAKEMAKE_MOONS,
+     wow:'멀리 <b>카이퍼 벨트</b>에 살아요. 궤도가 많이 기울어 있고, 표면이 <b>붉은 갈색</b>을 띠어요.'},
+    {ko:'에리스',en:'Eris',emoji:'⚪',type:'ice',base:'#dfe6ea',funR:0.7,funDist:204,rk:1163,au:67.81,tilt:0.3,rotH:25.9,yearN:558,inc:0.768,tiltDeg:'약 78°',incDeg:'44°(가장 많이 기욺!)',spinDir:'정방향',isDwarf:true,
+     moons:'1개',day:'26시간',year:'558년',temp:'약 -230°C',sub:'명왕성만 한 먼 왜소행성',sats:ERIS_MOONS,
+     wow:'궤도가 <b>가장 많이 기울어(44°)</b> 태양계 원반에서 삐죽 벗어나 있어요. 명왕성만 한 이 별 때문에 명왕성이 <b>행성에서 빠졌답니다!</b>'},
+  ];
+  // ===== 실제 주기 → 애니메이션 속도 파생(과학적으로 정확한 상대 비율, 보기 좋게 압축) =====
+  //  공전: 실제 공전주기(년)^0.6 로 압축 → 안쪽은 빠르고 바깥은 느림(케플러 법칙의 느낌)
+  //  자전: 실제 자전주기(시간) 기준, 짧을수록 빠름, 부호는 자전 방향(음수=거꾸로)
+  PLANETS.forEach(p=>{
+    p.orbit = 16 * Math.pow(p.yearN, 0.6);
+    p.spin  = Math.sign(p.rotH) * Math.pow(24/Math.abs(p.rotH), 0.5);
+  });
+
+  // ============ 텍스처 ============
+  function cvns(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
+  function tx(c){const t=new THREE.CanvasTexture(c);t.anisotropy=4;t.encoding=THREE.sRGBEncoding;t.wrapS=THREE.RepeatWrapping;return t;}
+  const texLoader=new THREE.TextureLoader();
+  function realTex(key){if(!TEX[key])return null;const t=texLoader.load(TEX[key]);t.anisotropy=4;t.encoding=THREE.sRGBEncoding;t.wrapS=THREE.RepeatWrapping;return t;}
+  function spots(x,w,h,n,cols,rmin,rmax,amin,amax){for(let i=0;i<n;i++){x.globalAlpha=rnd(amin,amax);
+    x.fillStyle=cols[Math.floor(Math.random()*cols.length)];x.beginPath();x.arc(rnd(0,w),rnd(0,h),rnd(rmin,rmax),0,TWO);x.fill();}x.globalAlpha=1;}
+  function poles(x,w,h,col,size){let g=x.createLinearGradient(0,0,0,h*size);g.addColorStop(0,col);g.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle=g;x.fillRect(0,0,w,h*size);g=x.createLinearGradient(0,h,0,h*(1-size));g.addColorStop(0,col);g.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle=g;x.fillRect(0,h*(1-size),w,h*size);}
+  function shade(hex,d){const n=parseInt(hex.slice(1),16);let r=(n>>16)+d,g=((n>>8)&255)+d,b=(n&255)+d;
+    r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+    return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+  function procTexture(p){const w=256,h=128,c=cvns(w,h),x=c.getContext('2d');x.fillStyle=p.base;x.fillRect(0,0,w,h);
+    switch(p.type){
+      case 'ceres':spots(x,w,h,400,['#7f786e','#b6ad9f','#5f594e','#c9c0b2'],1,5,.3,.7);break;
+      case 'pluto':spots(x,w,h,350,[shade(p.base,-30),shade(p.base,30),shade(p.base,-60),shade(p.base,50)],2,7,.2,.6);break;
+      case 'ice':spots(x,w,h,220,[p.base,'#ffffff','#bfe9f2'],4,14,.08,.3);poles(x,w,h,'rgba(255,255,255,.4)',.1);break;
+      default:spots(x,w,h,300,[shade(p.base,-30),shade(p.base,30),shade(p.base,-60)],2,6,.25,.6);
+    }return tx(c);}
+  function moonTexture(base,style){const w=128,h=64,c=cvns(w,h),x=c.getContext('2d');x.fillStyle=base;x.fillRect(0,0,w,h);
+    if(style==='volcano')spots(x,w,h,120,['#e8d24a','#c96a1a','#f0e08a','#a83a1a'],2,7,.3,.7);
+    else if(style==='ice')spots(x,w,h,80,['#ffffff','#cfeaff',base],2,8,.15,.5);
+    else if(style==='haze')spots(x,w,h,60,[shade(base,40),shade(base,-20),base],4,12,.15,.4);
+    else{spots(x,w,h,110,['#8f887c','#d0cabe','#6f6a60','#bdb6a8'],2,6,.3,.7);
+      for(let i=0;i<10;i++){x.globalAlpha=.5;x.fillStyle='#5f5a50';x.beginPath();x.arc(rnd(0,w),rnd(0,h),rnd(2,5),0,TWO);x.fill();}x.globalAlpha=1;}
+    return tx(c);}
+  function glowSprite(color){const c=cvns(128,128),x=c.getContext('2d');const g=x.createRadialGradient(64,64,0,64,64,64);
+    g.addColorStop(0,color);g.addColorStop(.25,color);g.addColorStop(1,'rgba(255,180,80,0)');x.fillStyle=g;x.fillRect(0,0,128,128);
+    return new THREE.Sprite(new THREE.SpriteMaterial({map:tx(c),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));}
+
+  // ============ 씬 ============
+  const app=document.getElementById('app');
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.02,4000000);
+  const HOME=new THREE.Vector3(0,100,225);
+  const renderer=new THREE.WebGLRenderer({antialias:true,logarithmicDepthBuffer:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
+  renderer.outputEncoding=THREE.sRGBEncoding;app.appendChild(renderer.domElement);
+  const controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true;controls.dampingFactor=.06;controls.maxPolarAngle=Math.PI*0.96;controls.enablePan=false;
+  scene.add(new THREE.AmbientLight(0xffffff,0.16));
+  const sunLight=new THREE.PointLight(0xffffff,2.6,0,0);scene.add(sunLight);
+
+  (function(){const n=2600,geo=new THREE.BufferGeometry(),pos=new Float32Array(n*3),col=new Float32Array(n*3);
+    const pal=[[1,1,1],[.75,.85,1],[1,.88,.72],[1,.78,.9]];
+    for(let i=0;i<n;i++){const r=rnd(200000,700000),th=Math.acos(rnd(-1,1)),ph=rnd(0,TWO);
+      pos[i*3]=r*Math.sin(th)*Math.cos(ph);pos[i*3+1]=r*Math.cos(th);pos[i*3+2]=r*Math.sin(th)*Math.sin(ph);
+      const cc=pal[Math.floor(Math.random()*pal.length)],b=rnd(.5,1);col[i*3]=cc[0]*b;col[i*3+1]=cc[1]*b;col[i*3+2]=cc[2]*b;}
+    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+    scene.add(new THREE.Points(geo,new THREE.PointsMaterial({size:2,vertexColors:true,sizeAttenuation:false,transparent:true})));})();
+
+  const UNIT=new THREE.SphereGeometry(1,48,48);
+
+  // ===== 다이나믹 효과 =====
+  const timeUniforms=[];let gTime=0,sunRcur=9;
+  // 가스행성: 위도별 다른 속도로 줄무늬가 흐름(대적점도 함께 이동)
+  function bandShader(mat,strength){mat.onBeforeCompile=(sh)=>{
+    sh.uniforms.uTime={value:gTime};timeUniforms.push(sh.uniforms.uTime);
+    sh.fragmentShader='uniform float uTime;\n'+sh.fragmentShader.replace('#include <map_fragment>',
+      '#ifdef USE_MAP\n vec2 g_uv=vUv;\n'+
+      ' g_uv.x += uTime*'+strength.toFixed(5)+'*(0.55+0.55*sin(g_uv.y*18.85));\n'+
+      ' vec4 texelColor=texture2D(map,g_uv); texelColor=mapTexelToLinear(texelColor); diffuseColor*=texelColor;\n#endif');};}
+  // 태양: 표면이 끓고 밝기가 요동
+  function sunMaterial(){const m=TEX.sun?new THREE.MeshBasicMaterial({map:realTex('sun')}):new THREE.MeshBasicMaterial({color:0xffaa33});
+    if(TEX.sun)m.onBeforeCompile=(sh)=>{sh.uniforms.uTime={value:gTime};timeUniforms.push(sh.uniforms.uTime);
+      sh.fragmentShader='uniform float uTime;\n'+sh.fragmentShader.replace('#include <map_fragment>',
+        '#ifdef USE_MAP\n vec2 s_uv=vUv; float s_t=uTime*0.06;\n'+
+        ' s_uv.x += 0.004*sin(s_uv.y*26.0+s_t*4.0)+0.0025*sin(s_uv.y*11.0-s_t*2.0);\n'+
+        ' s_uv.y += 0.0025*sin(s_uv.x*24.0+s_t*3.0);\n'+
+        ' vec4 texelColor=texture2D(map,s_uv);\n'+
+        ' float fl=0.93+0.12*sin(s_t*2.4+s_uv.x*16.0)*sin(s_t*1.7+s_uv.y*12.0);\n'+
+        ' texelColor.rgb*=fl*1.06;\n'+
+        ' texelColor=mapTexelToLinear(texelColor); diffuseColor*=texelColor;\n#endif');};
+    return m;}
+  const sunMesh=new THREE.Mesh(UNIT,sunMaterial());scene.add(sunMesh);
+  // 부드럽게 바깥으로 퍼지는 코로나 글로우 (링 없이 자연스럽게)
+  const glow1=glowSprite('rgba(255,224,150,0.85)'),glow2=glowSprite('rgba(255,150,60,0.45)');
+  scene.add(glow1);scene.add(glow2);
+  // 태양 플레어(홍염): 가장자리에서 터졌다 사라짐
+  function flareTexture(){const c=cvns(64,64),x=c.getContext('2d');const g=x.createRadialGradient(32,32,0,32,32,32);
+    g.addColorStop(0,'rgba(255,244,210,1)');g.addColorStop(0.3,'rgba(255,180,80,0.85)');g.addColorStop(1,'rgba(255,120,40,0)');
+    x.fillStyle=g;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c);}
+  const FLARETEX=flareTexture();const flareGroup=new THREE.Group();scene.add(flareGroup);let flareT=0.8;
+  function spawnFlare(){const dir=new THREE.Vector3(rnd(-1,1),rnd(-1,1),rnd(-1,1));if(dir.lengthSq()<0.02)dir.set(1,0,0);dir.normalize();
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:FLARETEX,color:0xffc061,blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,opacity:0}));
+    s.userData={dir,life:0,max:rnd(1.1,2.3),size:sunRcur*rnd(0.45,1.15)};flareGroup.add(s);}
+  function updateFlares(dt){flareT-=dt;if(flareT<=0){if(flareGroup.children.length<7)spawnFlare();flareT=rnd(0.35,1.4);}
+    for(let i=flareGroup.children.length-1;i>=0;i--){const s=flareGroup.children[i],u=s.userData;u.life+=dt;const p=u.life/u.max;
+      if(p>=1){flareGroup.remove(s);s.material.dispose();continue;}
+      const grow=u.size*(0.35+p*1.05);s.position.copy(u.dir).multiplyScalar(sunRcur*0.9+grow*0.4);
+      s.scale.setScalar(grow);s.material.opacity=Math.sin(p*Math.PI)*0.85;}}
+
+  // 소행성대 (기본 탐험 반경 ~59)
+  const asteroids=new THREE.Object3D();scene.add(asteroids);
+  (function(){const n=700,geo=new THREE.BufferGeometry(),pos=new Float32Array(n*3),col=new Float32Array(n*3);
+    for(let i=0;i<n;i++){const rr=rnd(53,66),a=rnd(0,TWO);pos[i*3]=Math.cos(a)*rr;pos[i*3+1]=rnd(-2.5,2.5);pos[i*3+2]=Math.sin(a)*rr;
+      const b=rnd(.4,.8);col[i*3]=b;col[i*3+1]=b*.85;col[i*3+2]=b*.65;}
+    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+    asteroids.add(new THREE.Points(geo,new THREE.PointsMaterial({size:2,vertexColors:true,sizeAttenuation:false})));})();
+
+  // 천체 목록(먼저 선언 — 혜성/카이퍼가 clickMeshes를 사용)
+  // ---- 별빛 항해소(부모 창)가 붙여 주는 케플러 기계 ----
+  // 이 앱은 원래 원궤도를 **임의 위상·임의 승교점**에서 돌렸다. 보기에는 그럴듯하지만
+  // 어느 날짜에도 대응하지 않아서, 부모와 날짜를 주고받아도 맞는 척만 하게 된다.
+  // 부모가 SKY_BRIDGE 를 붙여 주면 궤도면·행성 각도·위성 주기를 그쪽 계산에서 받아 온다.
+  // 없으면(이 파일만 따로 열면) 예전 그대로 돈다 — 이 앱은 혼자서도 열려야 한다.
+  //
+  // 선언 위치가 중요하다. 아래 PLANETS.forEach 가 궤도면을 세울 때 이미 쓰므로
+  // 그보다 먼저 있어야 한다 — 뒤에 두면 TDZ 로 앱이 통째로 죽는다(실제로 죽였다).
+  const SKY=window.SKY_BRIDGE||null;
+  const bodies=[],orbitLines=[],labeled=[],clickMeshes=[];
+
+  // 카이퍼 벨트 (해왕성 너머 얼음 천체 띠)
+  const kuiper=new THREE.Object3D();scene.add(kuiper);
+  (function(){const n=1400,geo=new THREE.BufferGeometry(),pos=new Float32Array(n*3),col=new Float32Array(n*3);
+    for(let i=0;i<n;i++){const rr=rnd(210,275),a=rnd(0,TWO);pos[i*3]=Math.cos(a)*rr;pos[i*3+1]=rnd(-8,8);pos[i*3+2]=Math.sin(a)*rr;
+      const b=rnd(.45,.85);col[i*3]=b*.8;col[i*3+1]=b*.9;col[i*3+2]=b;}
+    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+    kuiper.add(new THREE.Points(geo,new THREE.PointsMaterial({size:1.6,vertexColors:true,sizeAttenuation:false})));})();
+
+  // 프레임 업데이트 훅 (특별 기능들이 여기에 등록)
+  const frameUpdaters=[];
+
+  // ☄️ 혜성 (핼리 혜성) — 태양에 가까워지면 꼬리가 길어짐
+  const COMET={ko:'핼리 혜성',emoji:'☄️',sub:'꼬리를 끌고 거꾸로 도는 얼음 천체',kind:'comet',
+    factList:[['정체','얼음+먼지 눈덩이'],['꼬리','언제나 태양 반대쪽'],['공전','약 76년'],['공전 방향','거꾸로(역행)'],['다음 방문','2061년'],['남긴 것','유성우 씨앗']],
+    wow:'태양에 가까워지면 얼음이 녹아 <b>기다란 꼬리</b>가 생겨요. 76년마다 찾아오는 손님! 다른 천체와 <b>반대로</b> 돌고, 흘린 먼지가 <b>오리온·물병자리 유성우</b>가 된답니다. 🌠'};
+  const cometGroup=new THREE.Object3D();scene.add(cometGroup);
+  const cometNucleus=new THREE.Mesh(new THREE.SphereGeometry(0.5,20,20),
+    new THREE.MeshStandardMaterial({map:(TEX.cometTex?realTex('cometTex'):moonTexture('#cfe6f0','ice')),roughness:1,metalness:0}));
+  cometNucleus.userData.data=COMET;COMET._mesh=cometNucleus;COMET._r=0.9;cometGroup.add(cometNucleus);clickMeshes.push(cometNucleus);
+  const cometGlow=glowSprite('rgba(180,230,255,0.8)');cometGlow.scale.setScalar(3);cometGroup.add(cometGlow);
+  // 이온 꼬리(파랑) + 먼지 꼬리(노랑)
+  function tailMat(c){return new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});}
+  const tailIon=new THREE.Mesh(new THREE.ConeGeometry(1.4,1,16,1,true),tailMat(0x9fd8ff));
+  const tailDust=new THREE.Mesh(new THREE.ConeGeometry(1.8,1,16,1,true),tailMat(0xffe6a0));
+  cometGroup.add(tailIon);cometGroup.add(tailDust);
+  let cometTheta=rnd(0,TWO);
+  const cometA=150, cometE=0.82, cometInc=0.85;                   // 반장축/이심률/기울기(탐험모드, 실제 핼리는 매우 찌그러짐)
+  const _sunPos=new THREE.Vector3(), _q=new THREE.Quaternion(), _up=new THREE.Vector3(0,1,0), _tdir=new THREE.Vector3();
+  function updateComet(dt){
+    if(MODE_REAL){cometGroup.visible=false;return;}               // 실제 비율에선 숨김(너무 작음)
+    cometGroup.visible=true;
+    const a=cometA, r=a*(1-cometE*cometE)/(1+cometE*Math.cos(cometTheta));
+    cometTheta-=dt*speed*0.05*Math.max(0.5,Math.min(9,(a*a)/(r*r)))*(playing?1:0); // 역행(거꾸로)+태양 가까이서 빠르게
+    const x=Math.cos(cometTheta)*r, z=Math.sin(cometTheta)*r*Math.cos(cometInc), y=Math.sin(cometTheta)*r*Math.sin(cometInc);
+    cometGroup.position.set(x,y,z);
+    cometNucleus.scale.setScalar(1);cometGlow.scale.setScalar(3);COMET._r=0.9;
+    // 꼬리: 태양(원점) 반대 방향, 태양에 가까울수록 길게
+    _tdir.copy(cometGroup.position).normalize();
+    const near=Math.max(0, 1-(r/(a*(1+cometE))));                  // 0(원일점)~1(근일점)
+    const len=6+near*40;
+    _q.setFromUnitVectors(_up,_tdir);
+    [tailIon,tailDust].forEach((t,i)=>{t.quaternion.copy(_q);
+      const L=len*(i?1.15:1),W=(i?1.8:1.2)*(0.6+near*0.8);
+      t.scale.set(W,L,W);t.position.copy(_tdir).multiplyScalar(L*0.5);
+      t.material.opacity=(0.06+near*0.26)*(i?0.7:1);});   // 부드러운 꼬리
+    cometGlow.material.opacity=0.3+near*0.6;
+  }
+  frameUpdaters.push(updateComet);
+
+  // 궤도선 단위원
+  const ORBITGEO=(function(){const pts=[];for(let a=0;a<=96;a++){const t=a/96*TWO;pts.push(new THREE.Vector3(Math.cos(t),0,Math.sin(t)));}
+    return new THREE.BufferGeometry().setFromPoints(pts);})();
+  // 자전축(극에서 극으로) — 반지름1 구 기준, 표면 살짝 밖까지
+  const AXISGEO=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-1.6,0),new THREE.Vector3(0,1.6,0)]);
+  const axisLines=[];let showAxis=true;
+
+  const labelsBox=document.getElementById('labels');
+  function mkLabel(p,cls){const el=document.createElement('div');el.className='label'+(cls?' '+cls:'');
+    el.textContent=p.emoji+' '+p.ko;el.style.pointerEvents='auto';el.style.cursor='pointer';
+    el.addEventListener('click',()=>{openCard(p);if(MODE_REAL)focusOn(p);});labelsBox.appendChild(el);return el;}
+
+  // 천체 생성 (반지름 1 구를 scale로 조절 → 모드 전환 쉬움)
+  PLANETS.forEach(p=>{
+    // 궤도 경사: node(승교점 방향) → incG(궤도면 기울기) → pivot(공전) → holder(행성 위치)
+    // 다리가 있으면 궤도면(승교점·경사)도 진짜 값으로 세운다. 없으면 예전처럼 난수 방향이다 —
+    // pivot 각도만 맞추고 이 평면이 제멋대로면 행성 사이의 방향 관계가 여전히 틀린다.
+    const _fr=SKY&&SKY.frame(p.ko);
+    const node=new THREE.Object3D();node.rotation.y=_fr?_fr.nod:rnd(0,TWO);scene.add(node);
+    const incG=new THREE.Object3D();incG.rotation.x=_fr?_fr.inc:(p.inc||0);node.add(incG);
+    const pivot=new THREE.Object3D();pivot.rotation.y=rnd(0,TWO);incG.add(pivot);
+    const holder=new THREE.Object3D();pivot.add(holder);
+    const mat=p.realTex&&TEX[p.realTex]?new THREE.MeshStandardMaterial({map:realTex(p.realTex),roughness:1,metalness:0}):
+      new THREE.MeshStandardMaterial({map:procTexture(p),roughness:1,metalness:0});
+    if(p.bands)bandShader(mat,p.bands);
+    const mesh=new THREE.Mesh(UNIT,mat);mesh.userData.data=p;p._mesh=mesh;
+    // 기울기는 부모 그룹(tilt)에, 자전은 mesh(rotation.y)에 → 기울어진 축을 중심으로 자전
+    const tilt=new THREE.Object3D();tilt.rotation.z=p.tilt;holder.add(tilt);tilt.add(mesh);
+    // 자전축 선: mesh의 자식(크기 상속, Y자전엔 불변이라 극 방향 유지)
+    const axis=new THREE.Line(AXISGEO,new THREE.LineBasicMaterial({color:0xbfe6ff,transparent:true,opacity:0.32,depthWrite:false}));
+    axis.visible=showAxis;mesh.add(axis);axisLines.push(axis);
+    p.kind=p.isDwarf?'dwarf':'planet';clickMeshes.push(mesh);
+
+    if(p.ring){const inner=1.15,outer=2.3,rg=new THREE.RingGeometry(inner,outer,90),pa=rg.attributes.position,v=new THREE.Vector3();
+      for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i);rg.attributes.uv.setXY(i,(v.length()-inner)/(outer-inner),0.5);}
+      const rmat=TEX.saturnRing?new THREE.MeshBasicMaterial({map:realTex('saturnRing'),side:THREE.DoubleSide,transparent:true,depthWrite:false}):
+        new THREE.MeshBasicMaterial({color:0xe6d3a0,side:THREE.DoubleSide,transparent:true,opacity:.7});
+      const ring=new THREE.Mesh(rg,rmat);ring.rotation.x=Math.PI/2;mesh.add(ring);}
+
+    const b={pivot,holder,tilt,mesh,axis,p,moonPivots:[],orbitPhase:pivot.rotation.y,spinPhase:mesh.rotation.y};
+    if(p.hasCloud){const cmat=TEX.earthClouds?
+        new THREE.MeshStandardMaterial({map:realTex('earthClouds'),alphaMap:realTex('earthClouds'),transparent:true,depthWrite:false,roughness:1}):
+        new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.25,depthWrite:false,roughness:1});
+      const cloud=new THREE.Mesh(UNIT,cmat);tilt.add(cloud);b.cloud=cloud;
+      // 푸른 대기 산란(림 글로우)
+      const atmoMat=new THREE.ShaderMaterial({uniforms:{uColor:{value:new THREE.Color(0x6fb4ff)}},
+        vertexShader:'varying vec3 vN;varying vec3 vP;void main(){vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vP=mv.xyz;gl_Position=projectionMatrix*mv;}',
+        fragmentShader:'uniform vec3 uColor;varying vec3 vN;varying vec3 vP;void main(){float f=pow(1.0-abs(dot(normalize(vN),normalize(-vP))),3.0);gl_FragColor=vec4(uColor,f*0.9);}',
+        transparent:true,blending:THREE.AdditiveBlending,side:THREE.FrontSide,depthWrite:false});
+      const atmo=new THREE.Mesh(UNIT,atmoMat);tilt.add(atmo);b.atmo=atmo;}
+
+    (p.sats||[]).forEach(sat=>{
+      const mp=new THREE.Object3D();mp.rotation.y=rnd(0,TWO);mp.rotation.x=sat.inc||0;holder.add(mp);
+      const smat=sat.realTex&&TEX[sat.realTex]?new THREE.MeshStandardMaterial({map:realTex(sat.realTex),roughness:1,metalness:0}):
+        new THREE.MeshStandardMaterial({map:moonTexture(sat.base,sat.style),roughness:1,metalness:0});
+      const smesh=new THREE.Mesh(UNIT,smat);smesh.userData.data=sat;sat._mesh=smesh;sat.kind='moon';
+      mp.add(smesh);clickMeshes.push(smesh);b.moonPivots.push({pivot:mp,sat,mesh:smesh});
+      labeled.push({mesh:smesh,p:sat,label:mkLabel(sat,'moon'),off:11,isMoon:true});
+    });
+
+    const ol=new THREE.Line(ORBITGEO,new THREE.LineBasicMaterial({color:p.isDwarf?0xff9ecd:0xb296ff,transparent:true,opacity:p.isDwarf?.16:.22}));
+    incG.add(ol);orbitLines.push(ol);b.orbit=ol;   // 기울어진 궤도면에 궤도선을 그림
+    bodies.push(b);
+    labeled.push({mesh,p,label:mkLabel(p,p.isDwarf?'dwarf':''),off:p.isDwarf?15:19});
+  });
+  // 태양도 눌러서 가까이 볼 수 있게
+  const SUN={ko:'태양',emoji:'☀️',sub:'우리 태양계의 별',_mesh:sunMesh,kind:'sun',
+    factList:[['종류','별(항성)'],['표면','약 5500°C'],['크기','지구 109배'],['나이','약 46억 년']],
+    wow:'스스로 <b>빛과 열</b>을 내는 별이에요! 표면이 부글부글 끓고 <b>불꽃(플레어)</b>이 솟구쳐요. 🔥'};
+  sunMesh.userData.data=SUN;clickMeshes.push(sunMesh);
+  labeled.push({mesh:sunMesh,p:SUN,label:mkLabel(SUN,''),off:19});
+  const proj=new THREE.Vector3();
+
+  // ============ 모드(탐험 ↔ 실제 비율) ============
+  let MODE_REAL=false, moonCull=52;
+  function applyMode(real){
+    MODE_REAL=real;
+    bodies.forEach(b=>{const p=b.p;
+      const R=real?p.rk*KM:p.funR, D=real?p.au*AUU:p.funDist;
+      p._r=p.egg?R*1.7:R;
+      if(p.egg)b.mesh.scale.set(R*1.7,R*0.85,R*0.85);else b.mesh.scale.setScalar(R);
+      b.holder.position.x=D;b.orbit.scale.setScalar(D);
+      if(b.cloud)b.cloud.scale.setScalar(R*1.03);
+      if(b.atmo)b.atmo.scale.setScalar(R*1.06);
+      b.moonPivots.forEach(m=>{const s=m.sat;const sr=real?s.mk*KM:s.funR, sd=real?s.dk*KM:s.funDist;
+        s._r=sr;m.mesh.scale.setScalar(sr);m.mesh.position.x=sd;});
+    });
+    const sunR=real?696000*KM:9;sunRcur=sunR;SUN._r=sunR;
+    sunMesh.scale.setScalar(sunR);
+    asteroids.scale.setScalar(real?45.6:1);
+    kuiper.scale.setScalar(real?(43*AUU/242):1);   // 카이퍼 벨트 ~43 AU
+    if(real){controls.minDistance=0.03;controls.maxDistance=260000;controls.zoomSpeed=5;HOME.set(0,20000,60000);moonCull=42;}
+    else{controls.minDistance=25;controls.maxDistance=900;controls.zoomSpeed=1.2;HOME.set(0,100,225);moonCull=52;}
+    clearFocus();
+  }
+
+  // ============ 소리 & 음성 ============
+  let soundOn=true, actx=null, voices=[];
+  function audio(){if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+    if(actx&&actx.state==='suspended')actx.resume();return actx;}
+  function tone(f,dur,type,vol,delay){if(!soundOn)return;const a=audio();if(!a)return;
+    const t=a.currentTime+(delay||0),o=a.createOscillator(),g=a.createGain();
+    o.type=type||'sine';o.frequency.value=f;o.connect(g);g.connect(a.destination);
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.2,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.start(t);o.stop(t+dur);}
+  const sfxClick=()=>tone(660,0.15,'triangle',0.18);
+  const sfxRight=()=>[523,659,784,1047].forEach((f,i)=>tone(f,0.3,'sine',0.22,i*0.09));
+  const sfxWrong=()=>{tone(200,0.25,'sawtooth',0.13);tone(150,0.3,'sawtooth',0.13,0.12);};
+  const sfxWhoosh=()=>{tone(900,0.5,'sine',0.12);tone(500,0.5,'sine',0.08,0.05);};
+  if('speechSynthesis'in window){const lv=()=>voices=speechSynthesis.getVoices();lv();speechSynthesis.onvoiceschanged=lv;}
+  function pickKoVoice(){const ko=voices.filter(v=>v.lang&&v.lang.toLowerCase().indexOf('ko')===0);if(!ko.length)return null;
+    // 부드러운 여성 목소리 우선(Heami/Yuna/Google 등), 없으면 male로 보이는 것 제외
+    return ko.find(v=>/heami|yuna|sun|female|여성|여자|google/i.test(v.name))
+        || ko.find(v=>!/male|남성|남자|injoon|minsu/i.test(v.name)) || ko[0];}
+  function speak(t){if(!soundOn||!('speechSynthesis'in window))return;speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(t);u.lang='ko-KR';const v=pickKoVoice();if(v)u.voice=v;
+    u.rate=0.9;u.pitch=1.3;speechSynthesis.speak(u);}
+
+  // ============ 유성우 (실제 유성우들) ============
+  const fx=document.getElementById('fx'),fctx=fx.getContext('2d');
+  let meteors=[],meteorTimer=260;
+  // 실제 유성우: 이름, 절정 월, 고향(모천체), 시간당 개수, 유성 색
+  const SHOWERS=[
+    {ko:'사분의자리 유성우',mon:1,parent:'소행성 2003 EH₁',rate:'시간당 40개',color:[185,220,255]},
+    {ko:'거문고자리 유성우',mon:4,parent:'대처 혜성',rate:'시간당 18개',color:[205,230,255]},
+    {ko:'물병자리 에타 유성우',mon:5,parent:'☄️ 핼리 혜성',rate:'시간당 50개',color:[160,255,220]},
+    {ko:'페르세우스자리 유성우',mon:8,parent:'스위프트-터틀 혜성',rate:'시간당 100개',color:[255,240,180]},
+    {ko:'오리온자리 유성우',mon:10,parent:'☄️ 핼리 혜성',rate:'시간당 20개',color:[255,210,170]},
+    {ko:'사자자리 유성우',mon:11,parent:'템펠-터틀 혜성',rate:'시간당 15개',color:[255,200,220]},
+    {ko:'쌍둥이자리 유성우',mon:12,parent:'소행성 파에톤',rate:'시간당 120개',color:[190,255,200]},
+  ];
+  let curShower=null;const radiant={x:0,y:0};
+  function sizeFx(){fx.width=innerWidth;fx.height=innerHeight;}
+  function pickShower(specific){
+    if(specific)curShower=specific;
+    else{const m=(new Date()).getMonth()+1;let bd=99;   // 오늘 날짜에 가장 가까운 유성우
+      SHOWERS.forEach(s=>{const d=Math.min((s.mon-m+12)%12,(m-s.mon+12)%12);if(d<bd){bd=d;curShower=s;}});}
+    radiant.x=rnd(innerWidth*0.22,innerWidth*0.78);radiant.y=rnd(innerHeight*0.12,innerHeight*0.34);
+    return curShower;}
+  function spawnMeteor(){                                 // 복사점에서 사방으로 뻗어나감(실제 유성우처럼)
+    const ang=rnd(0,TWO),sp=rnd(6,11),d0=rnd(0,40),dx=Math.cos(ang),dy=Math.sin(ang);
+    meteors.push({x:radiant.x+dx*d0,y:radiant.y+dy*d0,vx:dx*sp,vy:dy*sp,life:rnd(50,100),
+      col:curShower?curShower.color:[255,255,255]});}
+  function showerCaption(s){hintEl.classList.remove('hide','pulse');
+    hintEl.innerHTML=`🌠 <b>${s.ko}</b> · 고향: ${s.parent} · ${s.rate}`;
+    clearTimeout(showerCaption._t);showerCaption._t=setTimeout(()=>hintEl.classList.add('hide'),4300);}
+  function meteorBurst(specific){sfxWhoosh();const s=pickShower(specific);showerCaption(s);
+    const n=/1[02]0/.test(s.rate)?26:16;for(let i=0;i<n;i++)setTimeout(spawnMeteor,i*60);}
+  function drawMeteors(){fctx.clearRect(0,0,innerWidth,innerHeight);
+    if(--meteorTimer<=0){if(!curShower)pickShower();spawnMeteor();meteorTimer=rnd(220,520);}
+    for(let i=meteors.length-1;i>=0;i--){const m=meteors[i];m.x+=m.vx;m.y+=m.vy;m.life--;
+      const c=m.col||[255,255,255];
+      const g=fctx.createLinearGradient(m.x,m.y,m.x-m.vx*10,m.y-m.vy*10);
+      g.addColorStop(0,`rgba(${c[0]},${c[1]},${c[2]},0.95)`);g.addColorStop(1,`rgba(${c[0]},${c[1]},${c[2]},0)`);
+      fctx.strokeStyle=g;fctx.lineWidth=2.4;fctx.lineCap='round';
+      fctx.beginPath();fctx.moveTo(m.x,m.y);fctx.lineTo(m.x-m.vx*10,m.y-m.vy*10);fctx.stroke();
+      if(m.life<=0||m.x<-60||m.x>innerWidth+60||m.y<-60||m.y>innerHeight+60)meteors.splice(i,1);}}
+
+  // ============ 포커스(행성 기준 확대) — 스냅 후 따라가기 ============
+  // 좌표가 수천~수만 단위로 커서, 먼 홈에서 긴 보간은 정밀도 문제가 생김.
+  // 그래서 대상 행성 근처로 즉시 스냅한 뒤, 매 프레임 오프셋을 유지하며 따라감.
+  let focusMesh=null;
+  const _wp=new THREE.Vector3(),focusOff=new THREE.Vector3(),camOffset=new THREE.Vector3();
+  const backBtn=document.getElementById('backBtn');
+  function focusOn(data){if(!data||!data._mesh)return;
+    focusMesh=data._mesh;focusMesh.getWorldPosition(_wp);
+    const r=data._r||1,dist=Math.max(r*6,0.05);controls.minDistance=Math.max(0.02,r*1.25);
+    focusOff.set(dist*0.5,dist*0.55,dist*0.9);
+    controls.target.copy(_wp);camera.position.copy(_wp).add(focusOff);
+    camOffset.copy(focusOff);controls.update();
+    closeCard();hideHint();backBtn.classList.add('show');sfxClick();speak(data.ko);}
+  function clearFocus(){focusMesh=null;
+    controls.minDistance=MODE_REAL?0.03:25;controls.maxDistance=MODE_REAL?260000:900;
+    controls.target.set(0,0,0);camera.position.copy(HOME);controls.update();backBtn.classList.remove('show');}
+  backBtn.addEventListener('click',clearFocus);
+
+  // ============ 애니메이션 ============
+  let playing=true,speed=1,showLabels=true,showOrbits=true;
+  const clock=new THREE.Clock();
+
+  // ============ 🚀 우주선 탐험 게임 (지구 출발 · 목적지 선택 · 스윙바이) ============
+  // 시점은 태양계가 함께 보이는 3인칭과, 우주선 진행 방향을 보는 1인칭 둘만 제공한다.
+  let tourActive=false,tourPaused=false,tourFirstPerson=false,flyCount=0,legSpeed=16;
+  let gameTarget=null, lastArrived=null, gameArrived=false;     // 현재 목적지 / 마지막 도착지
+  const discovered=new Set(['태양','지구']);                     // 발견한 천체(이름 공개)
+  const GSUN=5200, BASE_SPEED=16, MAX_SPEED=52;
+  let boostExtra=0, boostFuel=100, scEngine=null;   // 부스터 연료(0~100)
+  // 🌀 궤도 기반 여정: 지구에서 출발 → 단계적으로 궤도 넓히기 → 목표 행성 궤도 진입·공전 → 착륙
+  let jActive=false,jPhase='idle',jCenterMesh=null,jTargetD=null,jAng=0,jR=0,jRfrom=0,jRto=0,jEase=1,
+      jStage=0,jStages=[],jAutoT=0,jArriveT=0,jCapT=0,jYamp=0.8;
+  // 단순 직선 이동 대신, 두 원형 궤도를 잇는 호만 전이와 비슷한 타원 궤도를 사용한다.
+  let jArcT=0,jArcDur=8,jArcR1=0,jArcR2=0,jArcA=0,jArcE=0,jArcP=0,jArcAxis=0,jArcOut=true;
+  let jApproachT=0,jApproachDur=3,jCaptureR=0,jCaptureAng=0;
+  let simDays=0,journeyDays=0,jTravelDays=0;
+  window.__babyClock={get:()=>simDays,set:v=>{if(isFinite(v))simDays=v}};
+  window.__babyBodies=()=>bodies;   // 두 앱의 배치가 정말 같은지 밖에서 재 볼 수 있게 열어 둔다
+  function travelTimeText(days){const y=Math.floor(days/365.25),d=Math.floor(days-y*365.25);
+    return y?y+'년'+(d?' '+d+'일':''):Math.max(0,d)+'일';}
+  const AUTO_STAGE=2.7,_center=new THREE.Vector3();
+  function lerpAng(a,b,t){let d=b-a;while(d>Math.PI)d-=TWO;while(d<-Math.PI)d+=TWO;return a+d*t;}
+  const scPos=new THREE.Vector3(),scVel=new THREE.Vector3();
+  const _tp=new THREE.Vector3(),_dir=new THREE.Vector3(),_acc=new THREE.Vector3(),_side=new THREE.Vector3(),
+        _camGoal=new THREE.Vector3(),_fwd=new THREE.Vector3(),_upv=new THREE.Vector3(0,1,0);
+  const scGroup=new THREE.Object3D();scGroup.visible=false;scene.add(scGroup);
+  (function(){   // 🚀 날렵한 스타십 스타일 우주선
+    const hull=new THREE.MeshStandardMaterial({color:0xeef3fb,metalness:.9,roughness:.28,emissive:0x2b3a5c,emissiveIntensity:.4});
+    const red=new THREE.MeshStandardMaterial({color:0xff5566,metalness:.6,roughness:.4,emissive:0xff2e42,emissiveIntensity:.95});
+    const glass=new THREE.MeshStandardMaterial({color:0x7fe0ff,metalness:.3,roughness:.12,emissive:0x38c6ff,emissiveIntensity:1.2});
+    const wingM=new THREE.MeshStandardMaterial({color:0xd3ddec,metalness:.8,roughness:.32,emissive:0x24406e,emissiveIntensity:.5,side:THREE.DoubleSide});
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(.3,.5,2.3,22),hull);body.rotation.x=Math.PI/2;body.position.z=-0.15;scGroup.add(body);
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(.3,1.25,22),hull);nose.rotation.x=-Math.PI/2;nose.position.z=1.6;scGroup.add(nose);
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(.12,.42,16),red);tip.rotation.x=-Math.PI/2;tip.position.z=2.32;scGroup.add(tip);
+    const canopy=new THREE.Mesh(new THREE.SphereGeometry(.27,18,12),glass);canopy.scale.set(1,.55,1.5);canopy.position.set(0,.26,.55);scGroup.add(canopy);
+    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(.5,.6,.4,22),red);skirt.rotation.x=Math.PI/2;skirt.position.z=-1.35;scGroup.add(skirt);
+    [1,-1].forEach(s=>{   // 후퇴 델타 날개 + 빨간 윙팁
+      const w=new THREE.Mesh(new THREE.BoxGeometry(2.0,.07,1.15),wingM);
+      w.position.set(s*1.15,-.02,-.55);w.rotation.y=s*.42;w.rotation.z=s*.12;scGroup.add(w);
+      const wt=new THREE.Mesh(new THREE.BoxGeometry(.16,.1,1.15),red);
+      wt.position.set(s*2.05,-.02,-.75);wt.rotation.y=s*.42;scGroup.add(wt);});
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(.07,.72,1.0),wingM);fin.position.set(0,.42,-1.0);fin.rotation.x=.32;scGroup.add(fin);
+    const eng=glowSprite('rgba(130,205,255,0.95)');eng.scale.setScalar(3.0);eng.position.z=-1.65;scGroup.add(eng);scEngine=eng;
+    const eL=glowSprite('rgba(150,215,255,0.85)');eL.scale.setScalar(1.5);eL.position.set(-.3,0,-1.5);scGroup.add(eL);
+    const eR=eL.clone();eR.position.x=.3;scGroup.add(eR);
+  })();
+  scGroup.scale.setScalar(4.2); // 태양계 조망에서도 찾을 수 있도록 교육용으로 과장
+  const trailPts=[],TRAIL_MAX=260;
+  const trailGeo=new THREE.BufferGeometry();trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(TRAIL_MAX*3),3));
+  const trail=new THREE.Line(trailGeo,new THREE.LineBasicMaterial({color:0xaee8ff,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));trail.frustumCulled=false;trail.visible=false;scene.add(trail);
+  function pushTrail(){trailPts.push(scPos.x,scPos.y,scPos.z);if(trailPts.length>TRAIL_MAX*3)trailPts.splice(0,3);
+    trailGeo.attributes.position.array.set(trailPts);trailGeo.setDrawRange(0,trailPts.length/3);trailGeo.attributes.position.needsUpdate=true;}
+  // 궤도 링(현재 궤도=밝게 / 목표 궤도=희미) — 궤도가 넓어지는 걸 눈으로 보이게
+  function ringGeo(){const N=100,a=new Float32Array(N*3);for(let i=0;i<N;i++){const t=i/N*TWO;a[i*3]=Math.cos(t);a[i*3+2]=Math.sin(t);}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(a,3));return g;}
+  const orbRing=new THREE.LineLoop(ringGeo(),new THREE.LineBasicMaterial({color:0x9fe0ff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const orbGoal=new THREE.LineLoop(ringGeo(),new THREE.LineBasicMaterial({color:0xffd36b,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false}));
+  orbRing.frustumCulled=orbGoal.frustumCulled=false;orbRing.visible=orbGoal.visible=false;scene.add(orbRing);scene.add(orbGoal);
+  function updateOrbRing(){if(!jActive){orbRing.visible=orbGoal.visible=false;return;}
+    const C=_center.set(0,0,0);if(jCenterMesh)jCenterMesh.getWorldPosition(C);
+    orbRing.position.copy(C);orbRing.scale.set(jR,1,jR);orbRing.visible=true;
+    if(jPhase==='transfer'&&jStages.length){const tR=jStages[jStages.length-1];
+      orbGoal.position.copy(C);orbGoal.scale.set(tR,1,tR);orbGoal.visible=true;}else orbGoal.visible=false;}
+  const tourHud=document.getElementById('tourHud'),tourFlashEl=document.getElementById('tourFlash');
+  const _sp=new THREE.Vector3(), _arcNext=new THREE.Vector3(), _ZERO=new THREE.Vector3();
+  const _approachA=new THREE.Vector3(),_approachB=new THREE.Vector3(),_approachC=new THREE.Vector3(),_approachD=new THREE.Vector3(),_fpForward=new THREE.Vector3(0,0,1);
+  function tourFlash(txt,ms){tourFlashEl.textContent=txt;tourFlashEl.classList.add('show');
+    clearTimeout(tourFlash._t);tourFlash._t=setTimeout(()=>tourFlashEl.classList.remove('show'),ms||1400);}
+  function reveal(ko){if(!discovered.has(ko)){discovered.add(ko);
+    document.getElementById('discCount').textContent=discovered.size-1;}}   // 태양 제외 카운트
+
+  // ----- 목적지 목록(행성·왜소행성 + 대표 위성) -----
+  const DEST=[];
+  bodies.forEach(b=>{if(b.p.en!=='Earth')DEST.push({p:b.p,mesh:b.mesh,pr:Math.max(.6,b.p._r||b.p.funR||1),moon:false,sort:b.p.au||b.p.funDist||0});});
+  function addMoonDest(planetEn,moonKo){const b=bodies.find(x=>x.p.en===planetEn);if(!b)return;
+    const mp=b.moonPivots.find(m=>m.sat.ko===moonKo);
+    if(mp)DEST.push({p:mp.sat,mesh:mp.mesh,pr:Math.max(.4,mp.sat.funR||.6),moon:true,parent:b,sort:(b.p.au||b.p.funDist||0)+0.05});}
+  addMoonDest('Earth','달');addMoonDest('Mars','포보스');addMoonDest('Jupiter','이오');
+  addMoonDest('Jupiter','유로파');addMoonDest('Jupiter','가니메데');addMoonDest('Saturn','타이탄');
+  DEST.sort((a,b)=>a.sort-b.sort);
+  // 다음 여정은 늘 지구가 아니라, 마지막으로 도착한 천체의 궤도에서 다시 시작한다.
+  const EARTH_ORIGIN=(()=>{const b=bodies.find(x=>x.p.en==='Earth');return {p:b.p,mesh:b.mesh,pr:Math.max(.6,b.p._r||b.p.funR||1),moon:false,parent:null};})();
+  let launchFrom=EARTH_ORIGIN;
+  // 실제 우주선이라면 걸리는 대략적 시간(교육용) — 게임은 재미로 빠르게 날지만 진짜는 이만큼!
+  const TRAVEL={'달':'약 3일','수성':'약 4개월','금성':'약 5개월','화성':'약 7개월','목성':'약 2년','토성':'약 3년',
+    '천왕성':'약 9년','해왕성':'약 12년','명왕성':'약 9년 반','세레스':'약 4년','포보스':'약 7개월',
+    '이오':'약 2년','유로파':'약 2년','가니메데':'약 2년','타이탄':'약 3년','하우메아':'약 10년','마케마케':'약 10년','에리스':'약 12년'};
+  function travelStr(ko){return TRAVEL[ko]||'아주 오랜 시간';}
+  const TRAVEL_DAYS={'달':3,'수성':120,'금성':150,'화성':210,'목성':730,'토성':1095,'천왕성':3287,'해왕성':4383,'명왕성':3469,'세레스':1461,'포보스':210,
+    '이오':730,'유로파':730,'가니메데':730,'타이탄':1095,'하우메아':3652,'마케마케':3652,'에리스':4383};
+  function travelDaysFor(ko){return TRAVEL_DAYS[ko]||365;}
+
+  const destPicker=document.getElementById('destPicker'),gameStatusEl=document.getElementById('gameStatus');
+  function buildPicker(){destPicker.innerHTML='<div class="phead">🎯 어디로 날아갈까요?</div>';
+    DEST.forEach(d=>{const found=discovered.has(d.p.ko);
+      const btn=document.createElement('button');btn.className='destBtn'+(d.moon?' moon':'')+(found?' found':'');
+      btn.innerHTML='<span class="de">'+(d.p.emoji||(d.moon?'🌙':'🪐'))+'</span><span class="dn">'+d.p.ko+'</span>';
+      btn.addEventListener('click',()=>chooseDest(d));destPicker.appendChild(btn);});}
+  function showPicker(){hideLandAsk();buildPicker();destPicker.classList.add('show');tourHud.classList.add('picking');gameArrived=true;
+    gameStatusEl.textContent='🎯 가고 싶은 곳을 골라요!';}
+  function hidePicker(){destPicker.classList.remove('show');tourHud.classList.remove('picking');}
+  const landAskEl=document.getElementById('landAsk');
+  function showLandAsk(d){hidePicker();document.getElementById('landAskT').textContent='🛬 '+d.p.ko+'에 착륙할까요?';landAskEl.classList.add('show');}
+  function hideLandAsk(){landAskEl.classList.remove('show');}
+  function chooseDest(d){const origin=launchFrom||EARTH_ORIGIN;gameTarget=d;lastArrived=null;gameArrived=false;hidePicker();hideLandAsk();endFlyby(false);sfxWhoosh();
+    document.getElementById('tourLand').style.display='none';
+    setupJourney(d,origin);   // 현재 천체 궤도에서 출발 → 단계적으로 궤도 변경
+    gameStatusEl.textContent=(origin.p.emoji||'🪐')+' '+origin.p.ko+'에서 출발! '+d.p.ko+'으로 가는 중';
+    tourFlash((origin.p.emoji||'🪐')+' '+origin.p.ko+'에서 출발! '+d.p.ko+'으로 가요',1800);
+    speak(origin.p.ko+'에서 출발! '+d.p.ko+'으로 가요');}
+  function arriveAt(d){gameArrived=true;gameTarget=null;lastArrived=d;launchFrom=d;
+    const fresh=!discovered.has(d.p.ko);reveal(d.p.ko);
+    tourFlash((fresh?'🎉 처음 발견! ':'🎉 도착! ')+d.p.ko,1900);
+    sfxRight();meteorBurst();speak((fresh?d.p.ko+', 처음 발견했어요! ':d.p.ko+'에 도착! ')+'실제 우주선이라면 '+travelStr(d.p.ko)+' 걸리는 곳이에요. 착륙할까요?');
+    document.getElementById('tourLand').style.display='block';
+    gameStatusEl.textContent='🎉 '+d.p.ko+' 궤도 도착! (실제로는 '+travelStr(d.p.ko)+')';
+    showLandAsk(d);}
+
+  // ----- 궤도 넓히기 여정 -----
+  function setupJourney(d,origin){jTargetD=d;jArriveT=0;jCapT=0;flyCount=0;journeyDays=0;jTravelDays=travelDaysFor(d.p.ko);document.getElementById('tourCount').textContent=0;document.getElementById('tourTime').textContent='0일';
+    // 같은 행성의 위성으로 갈 때만 그 행성을 중심으로, 그 밖에는 태양 중심 궤도로 이동한다.
+    const targetParent=d.parent;
+    const localMoonTrip=!!(d.moon&&targetParent&&targetParent.mesh===origin.mesh);
+    jYamp=localMoonTrip?0.5:1.2;jCenterMesh=localMoonTrip?origin.mesh:null;
+    const C=_center.set(0,0,0);if(jCenterMesh)jCenterMesh.getWorldPosition(C);
+    let startR,targetR;
+    if(localMoonTrip){startR=Math.max(6,(origin.p._r||1)*5);
+      d.mesh.getWorldPosition(_sp);targetR=Math.hypot(_sp.x-C.x,_sp.z-C.z);}
+    else{origin.mesh.getWorldPosition(_sp);startR=Math.hypot(_sp.x,_sp.z);
+      d.mesh.getWorldPosition(_sp);targetR=Math.hypot(_sp.x,_sp.z);}
+    if(Math.abs(targetR-startR)<Math.max(2,startR*0.03))targetR=startR*1.2+10;
+    const steps=Math.max(3,Math.min(6,Math.round(3+Math.abs(targetR-startR)/Math.max(30,startR*0.5))));
+    jStages=[];for(let i=0;i<=steps;i++)jStages.push(startR+(targetR-startR)*i/steps);
+    jStage=0;jRfrom=startR;jRto=startR;jR=startR;jEase=1;jAutoT=0;
+    origin.mesh.getWorldPosition(_sp);jAng=localMoonTrip?0:Math.atan2(_sp.z-C.z,_sp.x-C.x);   // 현재 천체 위치에서 출발
+    scPos.set(C.x+Math.cos(jAng)*startR,C.y,C.z+Math.sin(jAng)*startR);
+    jArcR1=startR;jArcR2=targetR;jArcA=(startR+targetR)/2;
+    jArcE=Math.abs(targetR-startR)/Math.max(.001,startR+targetR);jArcP=jArcA*(1-jArcE*jArcE);
+    jArcOut=targetR>=startR;jArcAxis=jArcOut?jAng:jAng-Math.PI;
+    // 시간 점프 없이 하루씩 흘려 보낸다: 화면의 1초가 시뮬레이션의 1일이다.
+    jArcT=0;jArcDur=jTravelDays;
+    jPhase='transfer';jActive=true;}
+  function advanceStage(auto){if(jPhase!=='transfer'||jStage>=jStages.length-1)return false;
+    jStage++;jEase=0;jAutoT=0; // 중간 엔진 분사: 타원 전이 궤도의 에너지(Δv)를 조금씩 더한다.
+    flyCount++;document.getElementById('tourCount').textContent=flyCount;sfxWhoosh();
+    tourFlash(auto?'🔥 엔진 점화!':'🔥 부스터!',800);return true;}
+  function startCapture(d){jPhase='approach';jCenterMesh=d.mesh;jCapT=0;jArriveT=0;jApproachT=0;
+    d.mesh.getWorldPosition(_center);jCaptureR=Math.max(5,d.pr*3.6+4);
+    _approachA.copy(scPos);const radial=_dir.copy(scPos).sub(_center).normalize();jCaptureAng=Math.atan2(radial.z,radial.x);
+    _approachD.copy(_center).addScaledVector(radial,jCaptureR);
+    const tangent=_acc.copy(scVel).normalize(),turn=Math.min(42,Math.max(10,scPos.distanceTo(_approachD)*.32));
+    _approachB.copy(_approachA).addScaledVector(tangent,turn);
+    _side.set(-radial.z,0,radial.x);if(_side.dot(tangent)<0)_side.multiplyScalar(-1);
+    _approachC.copy(_approachD).addScaledVector(_side,-jCaptureR*1.8);
+    reveal(d.p.ko);tourFlash('🛰️ '+d.p.ko+'에 가까워져요',1200);sfxWhoosh();
+    gameStatusEl.textContent='🛰️ '+d.p.ko+'에 가까워지는 중…';}
+  function setTransferPoint(C,t,out){const nu=(out?t:1+t)*Math.PI;
+    const r=jArcP/Math.max(.001,1+jArcE*Math.cos(nu)),a=jArcAxis+nu;
+    jR=r;scPos.set(C.x+Math.cos(a)*r,C.y,C.z+Math.sin(a)*r);}
+  function updateJourney(dtc){if(!jActive)return;
+    const C=_center.set(0,0,0);if(jCenterMesh)jCenterMesh.getWorldPosition(C);
+    if(jEase<1)jEase=Math.min(1,jEase+dtc*0.85);
+    if(jPhase==='transfer'&&jTargetD){
+      if(jEase>=1&&jStage<jStages.length-1){jAutoT+=dtc;if(jAutoT>AUTO_STAGE)advanceStage(true);}
+      // 반 타원(근지점→원지점 또는 원지점→근지점)을 활주한다. 궤도 변경은 엔진 분사 시점에만 한다.
+      jArcT+=dtc*(1+(jStage/(Math.max(1,jStages.length-1)))*.16);
+      const t=Math.min(1,jArcT/jArcDur);setTransferPoint(C,t,jArcOut);
+      setTransferPoint(C,Math.min(1,t+.004),jArcOut);_arcNext.copy(scPos);setTransferPoint(C,t,jArcOut);
+      scVel.copy(_arcNext).sub(scPos).multiplyScalar(190);
+      if(t>=1)startCapture(jTargetD);
+      else gameStatusEl.textContent='🛰️ '+jTargetD.p.ko+'으로 가는 중 '+Math.round(t*100)+'%';}
+    else if(jPhase==='approach'&&jTargetD){
+      jApproachT=Math.min(1,jApproachT+dtc/jApproachDur);const t=jApproachT,u=1-t;
+      scPos.copy(_approachA).multiplyScalar(u*u*u).addScaledVector(_approachB,3*u*u*t).addScaledVector(_approachC,3*u*t*t).addScaledVector(_approachD,t*t*t);
+      scVel.copy(_approachB).sub(_approachA).multiplyScalar(3*u*u).addScaledVector(_approachC.clone().sub(_approachB),6*u*t).addScaledVector(_approachD.clone().sub(_approachC),3*t*t);
+      if(t>=1){jPhase='capture';jRfrom=jRto=jR=jCaptureR;jAng=jCaptureAng;jEase=1;tourFlash('🛰️ '+jTargetD.p.ko+' 궤도 진입!',1200);speak(jTargetD.p.ko+' 궤도에 들어왔어요. 착륙할까요?');gameStatusEl.textContent='🛰️ '+jTargetD.p.ko+' 궤도 공전 중…';}}
+    else if(jPhase==='capture'&&jTargetD){
+      const e2=jEase*jEase*(3-2*jEase);jR=jRfrom+(jRto-jRfrom)*e2;
+      const rev=Math.min(0.8,(Math.max(6,legSpeed)*flybySlow*3.4)/Math.max(12,jR));jAng+=rev*dtc;
+      jCapT+=dtc;const y=Math.sin(jAng*2)*jYamp;
+      scPos.set(C.x+Math.cos(jAng)*jR,C.y+y,C.z+Math.sin(jAng)*jR);
+      scVel.set(-Math.sin(jAng),0,Math.cos(jAng)).multiplyScalar(Math.max(4,legSpeed));
+      if(jCapT>3.0&&!gameArrived)arriveAt(jTargetD);}
+    else {const rev=Math.min(0.8,(Math.max(6,legSpeed)*flybySlow*3.4)/Math.max(12,jR));jAng+=rev*dtc;
+      scPos.set(C.x+Math.cos(jAng)*jR,C.y+Math.sin(jAng*2)*jYamp,C.z+Math.sin(jAng)*jR);
+      scVel.set(-Math.sin(jAng),0,Math.cos(jAng)).multiplyScalar(Math.max(4,legSpeed));}}
+
+  // ----- 스윙바이 타이밍(아케이드) -----
+  const swingTapEl=document.getElementById('swingTap');
+  let swingBody=null,swingState='none';const swingCooldown=new Map();
+  function setSwing(b,st){if(swingState===st&&swingBody===b)return;swingBody=b;swingState=st;
+    swingTapEl.classList.toggle('show',st!=='none');
+    swingTapEl.classList.toggle('hot',st==='hot');
+    swingTapEl.classList.toggle('armed',st==='near');}
+  function updateSwing(){if(flybyBody){setSwing(null,'none');return;}let best=null,bestD=1e9;
+    for(const b of bodies){b.mesh.getWorldPosition(_sp);const d=_sp.distanceTo(scPos);if(d<bestD){bestD=d;best=b;}}
+    if(!best||(swingCooldown.get(best)||0)>gTime){setSwing(null,'none');return;}
+    const pr=Math.max(.6,best.p._r||best.p.funR||1),hotR=pr*7+9,nearR=pr*15+22;
+    if(bestD<hotR)setSwing(best,'hot');else if(bestD<nearR)setSwing(best,'near');else setSwing(null,'none');}
+  function doSwing(){if(!tourActive)return;   // 스윙바이 = 행성 중력으로 궤도 넓히기(공짜 한 단계)
+    if(swingState==='hot'&&swingBody){
+      if(jPhase==='transfer'&&advanceStage(false))tourFlash('🚀 속도가 빨라졌어요!',900);
+      else tourFlash('🚀 계속 날아가요!',800);
+      sfxWhoosh();reveal(swingBody.p.ko);swingCooldown.set(swingBody,gTime+3);setSwing(null,'none');}
+    else if(swingState==='near')tourFlash('조금만 더 기다려요…',700);}
+  swingTapEl.addEventListener('click',doSwing);
+
+  // ----- 부스터(아케이드 가속) -----
+  const boostTapEl=document.getElementById('boostTap'),boostFuelBar=document.getElementById('boostFuelBar');
+  function doBoost(){if(!tourActive||tourPaused)return;   // 부스터 = 궤도를 한 단계 넓히기
+    if(jPhase!=='transfer'){tourFlash(jPhase==='capture'?'🛰️ 이미 궤도 진입! 착륙을 기다려요':'🎯 먼저 목적지를 골라요',900);return;}
+    if(jStage>=jStages.length-1){tourFlash('🚀 이미 최대 속도예요!',900);return;}
+    if(boostFuel>=25){boostFuel-=25;advanceStage(false);
+      if(scEngine){scEngine.scale.setScalar(5.4);scEngine.material.color.setHex(0xffaa55);}}
+    else tourFlash('⛽ 연료 충전 중… 잠깐만요',800);}
+  boostTapEl.addEventListener('click',doBoost);
+
+  // ----- 경유 천체: 착륙 질문 없이 스윙바이 효과만 보여 준다. 착륙은 최종 목적지에서만. -----
+  const flybyAskEl=document.getElementById('flybyAsk');
+  let flybyBody=null,flybySlow=1;const flybyCd=new Map();
+  function showFlyby(b){setSwing(null,'none');}
+  function endFlyby(cool){if(flybyBody&&cool)flybyCd.set(flybyBody,gTime+7);flybyBody=null;flybySlow=1;flybyAskEl.classList.remove('show');}
+  function updateFlyby(){if(gameArrived){return;}
+    let best=null,bestD=1e9;
+    for(const b of bodies){if(gameTarget&&b.mesh===gameTarget.mesh)continue;   // 목적지는 도착 처리가 따로
+      b.mesh.getWorldPosition(_sp);const d=_sp.distanceTo(scPos);if(d<bestD){bestD=d;best=b;}}
+    if(!best)return;const pr=Math.max(.6,best.p._r||best.p.funR||1);
+    const inR=pr*10+16,outR=pr*13+28;
+    if(bestD<inR&&(flybyCd.get(best)||0)<gTime){
+      if(flybyBody!==best){if(flybyBody)endFlyby(false);flybyBody=best;flybySlow=0.72;reveal(best.p.ko);showFlyby(best);}}
+    else if(flybyBody&&bestD>outR)endFlyby(true);}
+  document.getElementById('flybyLand').addEventListener('click',()=>{endFlyby(true);tourFlash('🚀 최종 목적지로 계속 날아가요!',900);});
+  document.getElementById('flybyGo').addEventListener('click',()=>{sfxClick();tourFlash('🚀 계속 날아가요!',900);endFlyby(true);});
+
+  function startTour(){if(MODE_REAL){applyMode(false);const mb=document.getElementById('modeBtn');mb.textContent='🔭 실제 비율';mb.classList.remove('off');}clearFocus();
+    tourActive=true;tourPaused=false;tourFirstPerson=false;flyCount=0;gameTarget=null;lastArrived=null;launchFrom=EARTH_ORIGIN;legSpeed=BASE_SPEED;
+    boostExtra=0;boostFuel=100;boostTapEl.classList.add('show');boostFuelBar.style.width='100%';
+    flybyBody=null;flybySlow=1;flybyCd.clear();flybyCd.set(bodies[2],gTime+5);flybyAskEl.classList.remove('show');
+    document.getElementById('tourBtn').textContent='🛑 탐험 끝';
+    document.getElementById('tourCount').textContent=0;
+    discovered.clear();discovered.add('태양');discovered.add('지구');document.getElementById('discCount').textContent=1;
+    trailPts.length=0;trail.visible=true;scGroup.visible=true;controls.enabled=false;
+    const e=bodies[2];e.mesh.getWorldPosition(_center);   // 지구 주위 저궤도에서 대기(출발 전)
+    jTargetD=null;jCenterMesh=e.mesh;jPhase='idle';jYamp=0.5;
+    jR=jRfrom=jRto=Math.max(6,(e.p._r||1)*5);jStages=[jR];jStage=0;jEase=1;jAutoT=0;jAng=0;
+    scPos.set(_center.x+jR,_center.y,_center.z);scVel.set(0,0,BASE_SPEED);jActive=true;
+    _fpForward.copy(scVel).normalize();
+    tourHud.classList.add('show');document.getElementById('tourPause').textContent='⏸ 멈춤';
+    document.getElementById('tourView').textContent='🕹️ 우주선 1인칭';document.getElementById('cockpitHud').classList.remove('show');document.getElementById('tourLand').style.display='none';
+    sfxWhoosh();speak('지구에서 출발! 가고 싶은 곳을 골라요');showPicker();}
+  function stopTour(){tourActive=false;scGroup.visible=false;trail.visible=false;tourHud.classList.remove('show');document.getElementById('cockpitHud').classList.remove('show');
+    hidePicker();hideLandAsk();endFlyby(false);setSwing(null,'none');boostTapEl.classList.remove('show');
+    jActive=false;jPhase='idle';orbRing.visible=false;orbGoal.visible=false;
+    document.getElementById('tourBtn').textContent='🚀 탐험 게임';controls.enabled=true;clearFocus();}
+
+  function updateTour(dt){if(!tourActive||tourPaused||!playing)return;const dtc=Math.min(.05,dt)*speed;
+    boostFuel=Math.min(100,boostFuel+dtc*22);                               // 연료 회복
+    if(boostFuelBar)boostFuelBar.style.width=boostFuel+'%';
+    boostTapEl.classList.toggle('empty',boostFuel<25);
+    if(scEngine){const hot=(jEase<1);scEngine.scale.setScalar(hot?4.8:3.0);scEngine.material.color.setHex(hot?0xffb050:0x82cdff);}
+    updateFlyby();
+    const travelling=jPhase==='transfer'||jPhase==='approach'||jPhase==='capture';updateJourney(dtc);
+    if(travelling){simDays+=dtc;journeyDays+=dtc;document.getElementById('tourTime').textContent=travelTimeText(journeyDays);}
+    scGroup.position.copy(scPos);scGroup.lookAt(_sp.copy(scPos).add(scVel));pushTrail();
+    updateOrbRing();updateSwing();
+    for(const b of bodies){b.mesh.getWorldPosition(_sp);                                 // 근처 천체 자동 발견
+      if(_sp.distanceTo(scPos)<Math.max(6,(b.p._r||b.p.funR||1)*4)&&!discovered.has(b.p.ko)){reveal(b.p.ko);tourFlash('✨ '+b.p.ko+' 발견!',1200);}}
+    document.getElementById('tourSpeed').textContent=Math.round(Math.max(4,legSpeed)*1.6)+' km/s'+(jEase<1?' 🔥':'');
+    tourCam();}
+  function tourCam(){_fwd.copy(scVel).normalize();
+    if(!tourFirstPerson){   // 3인칭: 태양계 전체와 우주선의 궤도 변화를 함께 조망
+      const shipR=scPos.length();
+      const d=Math.max(190,shipR*1.9+70);            // 우주선까지 담기게 뒤로 (멀리 갈수록 더 넓게)
+      _camGoal.set(scPos.x*0.12,d*0.96,d*0.58);
+      camera.position.lerp(_camGoal,0.045);
+      _tp.copy(scPos).multiplyScalar(0.32);           // 태양~우주선 사이를 바라봄(둘 다 화면에)
+      controls.target.lerp(_tp,0.06);camera.lookAt(controls.target);}
+    else{                                                // 1인칭: 방향·카메라를 천천히 완화해 멀미를 줄인다
+      _fpForward.lerp(_fwd,.025).normalize();
+      _camGoal.copy(scPos).addScaledVector(_upv,.22);
+      camera.position.lerp(_camGoal,.06);
+      _tp.copy(scPos).addScaledVector(_fpForward,90).addScaledVector(_upv,.18);
+      controls.target.lerp(_tp,.045);camera.lookAt(controls.target);}}
+  frameUpdaters.push(updateTour);
+  document.getElementById('tourBtn').addEventListener('click',()=>{if(tourActive){stopTour();}else{startTour();}});
+  document.getElementById('tourExit').addEventListener('click',()=>{stopTour();sfxClick();});
+  document.getElementById('tourPick').addEventListener('click',()=>{if(tourActive){gameTarget=null;showPicker();sfxClick();}});
+  document.getElementById('tourPause').addEventListener('click',()=>{tourPaused=!tourPaused;
+    document.getElementById('tourPause').textContent=tourPaused?'▶ 계속':'⏸ 멈춤';sfxClick();});
+  document.getElementById('tourView').addEventListener('click',()=>{tourFirstPerson=!tourFirstPerson;
+    document.getElementById('cockpitHud').classList.toggle('show',tourFirstPerson);
+    scGroup.visible=!tourFirstPerson;
+    document.getElementById('tourView').textContent=tourFirstPerson?'🔭 태양계 3인칭':'🕹️ 우주선 1인칭';
+    tourFlash(tourFirstPerson?'🕹️ 조종석 1인칭! 앞을 보고 날아가요':'🔭 태양계 3인칭! 궤도를 함께 봐요',1200);sfxClick();});
+  document.getElementById('tourLand').addEventListener('click',()=>{if(lastArrived){tourPaused=true;openArrival(lastArrived.p);}});
+  document.getElementById('landYes').addEventListener('click',()=>{hideLandAsk();sfxClick();if(lastArrived){tourPaused=true;openArrival(lastArrived.p);}});
+  document.getElementById('landNo').addEventListener('click',()=>{hideLandAsk();sfxClick();gameTarget=null;showPicker();});
+
+  function animate(){requestAnimationFrame(animate);
+    const dt=Math.min(.05,clock.getDelta());
+    if(playing&&!tourActive)simDays+=dt*speed; // 1배속=1초에 1일, 모든 실제 주기 천체가 같은 시간축을 사용
+    gTime+=dt;for(let i=0;i<timeUniforms.length;i++)timeUniforms[i].value=gTime;updateFlares(dt);
+    const gp=1+0.05*Math.sin(gTime*1.6);glow1.scale.setScalar(sunRcur*4.6*gp);glow2.scale.setScalar(sunRcur*8.0*gp);
+    if(playing){sunMesh.rotation.y+=dt*0.05*speed;asteroids.rotation.y+=dt*0.02*speed;kuiper.rotation.y+=dt*0.005*speed;}
+    for(let i=0;i<frameUpdaters.length;i++)frameUpdaters[i](dt);
+    if(playing)bodies.forEach(b=>{
+      // 여행 HUD의 날짜와 같은 시간축: 실제 공전년(yearN)·자전시간(rotH) 비율을 그대로 쓴다.
+      if(b.p.yearN&&b.p.rotH){
+        // 다리가 있으면 그 날짜의 **진짜 방향**을, 없으면 예전처럼 임의 위상에서 돈다.
+        const lon=SKY&&SKY.lon(b.p.ko,simDays);
+        b.pivot.rotation.y=(lon==null)?b.orbitPhase+TWO*simDays/(b.p.yearN*365.25):lon;
+        b.mesh.rotation.y=b.spinPhase+TWO*(simDays*24)/b.p.rotH;
+        if(b.cloud)b.cloud.rotation.y=TWO*(simDays*24)/23.93;
+      }else{ // 사용자가 만든 행성은 실제 천문 데이터가 없으므로 기존의 보기 좋은 속도를 유지한다.
+        b.pivot.rotation.y+=dt*(TWO/b.p.orbit)*speed;b.mesh.rotation.y+=dt*b.p.spin*(0.6+speed*0.4);}
+      b.moonPivots.forEach(m=>{
+        // 위성도 마찬가지다. 다리가 있으면 진짜 주기로 돈다 — 달이 27일에 한 바퀴가 된다.
+        const a=SKY&&SKY.moonLon(m.sat.ko,simDays);
+        if(a==null)m.pivot.rotation.y+=dt*(TWO/m.sat.orbit)*speed*(m.sat.retro?-1:1);
+        else m.pivot.rotation.y=a;});});
+    if(tourActive){/* 카메라는 updateTour의 tourCam이 직접 제어 */}
+    else{if(focusMesh){focusMesh.getWorldPosition(_wp);
+        controls.target.copy(_wp);camera.position.copy(_wp).add(camOffset);}
+      controls.update();
+      if(focusMesh)camOffset.copy(camera.position).sub(controls.target);}
+    labeled.forEach(L=>{if(!showLabels){L.label.style.opacity=0;return;}
+      // (게임 중에도 이름 다 보이게 — 사용자 요청)
+      L.mesh.getWorldPosition(proj);
+      if(L.isMoon&&camera.position.distanceTo(proj)>moonCull){L.label.style.opacity=0;return;}
+      proj.project(camera);if(proj.z>1){L.label.style.opacity=0;return;}
+      L.label.style.opacity=L.isMoon?.85:.95;
+      L.label.style.left=((proj.x*.5+.5)*innerWidth)+'px';
+      L.label.style.top=((-proj.y*.5+.5)*innerHeight-L.off)+'px';});
+    drawMeteors();renderer.render(scene,camera);}
+
+  // ============ 클릭/더블클릭 ============
+  const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let downX=0,downY=0;
+  function rayPick(e){mouse.x=(e.clientX/innerWidth)*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;
+    ray.setFromCamera(mouse,camera);const hits=ray.intersectObjects(clickMeshes,true);
+    if(hits.length){let o=hits[0].object;while(o&&!o.userData.data)o=o.parent;if(o)return o.userData.data;}return null;}
+  renderer.domElement.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;});
+  renderer.domElement.addEventListener('pointerup',e=>{if(Math.hypot(e.clientX-downX,e.clientY-downY)>8)return;
+    const d=rayPick(e);if(d){openCard(d);if(MODE_REAL)focusOn(d);hideHint();}});
+  renderer.domElement.addEventListener('dblclick',e=>{const d=rayPick(e);if(d)focusOn(d);});
+
+  // ============ 카드 ============
+  const card=document.getElementById('card');let cardData=null;
+  const hintEl=document.getElementById('hint');
+  function hideHint(){hintEl.classList.add('hide');}
+  function openCard(p){audio();cardData=p;
+    document.getElementById('cEmoji').textContent=p.emoji;
+    document.getElementById('cName').textContent=p.ko;
+    document.getElementById('cSub').textContent=p.sub;
+    const facts=p.factList||[['위성(달)',p.moons],['하루(자전)',p.day],['1년(공전)',p.year],['온도',p.temp]]
+      .concat(p.tiltDeg?[['자전축 기울기',p.tiltDeg]]:[], p.incDeg?[['궤도 기울기',p.incDeg]]:[], p.spinDir?[['자전 방향',p.spinDir]]:[]);
+    document.getElementById('cFacts').innerHTML=facts.map(f=>`<div class="fact"><div class="k">${f[0]}</div><div class="v">${f[1]}</div></div>`).join('');
+    document.getElementById('cWow').innerHTML='✨ '+p.wow;
+    document.getElementById('delBtn').style.display=p.custom?'block':'none';
+    document.getElementById('arriveBtn').style.display=(p.kind==='planet'||p.kind==='dwarf'||p.kind==='moon'||p.custom)?'block':'none';
+    document.getElementById('earthBtn').style.display=(p.en==='Earth')?'block':'none';
+    card.classList.add('show');sfxClick();speak(p.ko+'. '+p.sub);
+    try{markSeen(p.ko);}catch(e){}}
+  function closeCard(){card.classList.remove('show');}
+  document.getElementById('closeBtn').addEventListener('click',closeCard);
+  document.getElementById('focusBtn').addEventListener('click',()=>{if(cardData)focusOn(cardData);});
+  document.getElementById('delBtn').addEventListener('click',()=>{if(cardData&&cardData.custom)deleteCustomPlanet(cardData);});
+  document.getElementById('earthBtn').addEventListener('click',()=>{closeCard();openEarth();});
+  card.addEventListener('click',e=>{if(e.target===card)closeCard();});
+
+  // ============ 퀴즈 ============
+  const quizEl=document.getElementById('quiz');
+  const REALP=PLANETS.filter(p=>!p.isDwarf);
+  const PLANETNAMES=REALP.map(p=>p.ko);                       // 답이 행성일 때 보기
+  const DWARFNAMES=['명왕성','세레스','하우메아','마케마케','에리스'];
+  const MOONNAMES=['달','이오','유로파','가니메데','칼리스토','타이탄','엔셀라두스','트리톤','티타니아','미란다','포보스','데이모스'];
+  // pool: 'planet' | 'moon' | 'dwarf' (보기를 그 목록에서 뽑음) / it.opts 있으면 그 보기를 그대로 사용
+  const QBANK=[
+    // ===== 행성 특징·크기 (보기=행성) =====
+    {q:'가장 큰 행성은?',a:'목성',pool:'planet'},
+    {q:'가장 작은 행성은?',a:'수성',pool:'planet'},
+    {q:'두 번째로 큰 행성은?',a:'토성',pool:'planet'},
+    {q:'가스로 이루어진 가장 큰 행성은?',a:'목성',pool:'planet'},
+    {q:'가장 뜨거운 행성은?',a:'금성',pool:'planet'},
+    {q:'붉은 흙(녹슨 철)의 행성은?',a:'화성',pool:'planet'},
+    {q:'커다란 빨간 폭풍(대적점)이 있는 행성은?',a:'목성',pool:'planet'},
+    {q:'파란 대흑점과 빠른 바람이 있는 행성은?',a:'해왕성',pool:'planet'},
+    {q:'아름다운 얼음 고리로 가장 유명한 행성은?',a:'토성',pool:'planet'},
+    {q:'옆으로 누워 굴러가듯 도는 행성은?',a:'천왕성',pool:'planet'},
+    {q:'밤하늘에서 가장 밝게 빛나 샛별이라 불리는 행성은?',a:'금성',pool:'planet'},
+    {q:'두꺼운 구름과 온실효과로 펄펄 끓는 행성은?',a:'금성',pool:'planet'},
+    {q:'물과 생명이 있는, 우리가 사는 행성은?',a:'지구',pool:'planet'},
+    {q:'다른 행성과 반대로(거꾸로) 자전하는 행성은?',a:'금성',pool:'planet'},
+    {q:'줄무늬가 가장 뚜렷한 커다란 행성은?',a:'목성',pool:'planet'},
+    {q:'푸른 바다처럼 보이는 가장 먼 행성은?',a:'해왕성',pool:'planet'},
+    // ===== 순서·거리 (보기=행성) =====
+    {q:'태양과 가장 가까운 행성은?',a:'수성',pool:'planet'},
+    {q:'태양에서 가장 먼 행성은?',a:'해왕성',pool:'planet'},
+    {q:'태양에서 세 번째 행성은?',a:'지구',pool:'planet'},
+    {q:'태양에서 다섯 번째 행성은?',a:'목성',pool:'planet'},
+    {q:'지구 바로 바깥(다음) 행성은?',a:'화성',pool:'planet'},
+    {q:'지구 바로 안쪽 행성은?',a:'금성',pool:'planet'},
+    {q:'맨 안쪽(첫 번째) 행성은?',a:'수성',pool:'planet'},
+    {q:'맨 바깥(여덟 번째) 행성은?',a:'해왕성',pool:'planet'},
+    // ===== 공전·자전 (보기=행성) =====
+    {q:'1년(공전)이 가장 긴 행성은?',a:'해왕성',pool:'planet'},
+    {q:'1년(공전)이 가장 짧은 행성은?',a:'수성',pool:'planet'},
+    {q:'하루(자전)가 가장 긴 행성은?',a:'금성',pool:'planet'},
+    {q:'하루가 가장 짧은(가장 빨리 도는) 행성은?',a:'목성',pool:'planet'},
+    {q:'자전축이 거의 눕혀져 계절이 극단적인 행성은?',a:'천왕성',pool:'planet'},
+    // ===== 위성·고리·기록 (보기=행성) =====
+    {q:'위성(달)이 가장 많은 행성은?',a:'토성',pool:'planet'},
+    {q:'위성이 두 번째로 많은 행성은?',a:'목성',pool:'planet'},
+    {q:'달이 딱 1개인 행성은?',a:'지구',pool:'planet'},
+    {q:'위성이 2개(포보스·데이모스)인 행성은?',a:'화성',pool:'planet'},
+    {q:'갈릴레이 위성(이오·유로파 등)을 거느린 행성은?',a:'목성',pool:'planet'},
+    {q:'타이탄을 거느린 행성은?',a:'토성',pool:'planet'},
+    {q:'트리톤을 거느린 행성은?',a:'해왕성',pool:'planet'},
+    {q:'달을 거느린 행성은?',a:'지구',pool:'planet'},
+    {q:'물에 넣으면 뜰 만큼 가벼운(밀도가 낮은) 행성은?',a:'토성',pool:'planet'},
+    {q:'가장 무거운(질량이 큰) 행성은?',a:'목성',pool:'planet'},
+    {q:'가장 빠른 바람이 부는 행성은?',a:'해왕성',pool:'planet'},
+    {q:'태양계에서 가장 큰 화산(올림푸스 몬스)이 있는 행성은?',a:'화성',pool:'planet'},
+    {q:'탐사차(로버)가 돌아다니며 탐사 중인 붉은 행성은?',a:'화성',pool:'planet'},
+    {q:'공기가 거의 없어 낮과 밤 온도차가 극심한 행성은?',a:'수성',pool:'planet'},
+    // ===== 위성 이름 맞히기 (보기=위성) =====
+    {q:'지구를 도는 위성의 이름은?',a:'달',pool:'moon'},
+    {q:'태양계에서 가장 큰 위성은?',a:'가니메데',pool:'moon'},
+    {q:'토성의 가장 큰 위성은?',a:'타이탄',pool:'moon'},
+    {q:'두꺼운 대기와 메탄 호수가 있는 위성은?',a:'타이탄',pool:'moon'},
+    {q:'천왕성의 가장 큰 위성은?',a:'티타니아',pool:'moon'},
+    {q:'절벽이 아주 높은 천왕성의 위성은?',a:'미란다',pool:'moon'},
+    {q:'화산이 가장 많은 위성은?',a:'이오',pool:'moon'},
+    {q:'유황 때문에 노랗게 보이는 목성의 위성은?',a:'이오',pool:'moon'},
+    {q:'얼음 아래 바다가 있는 목성의 위성은?',a:'유로파',pool:'moon'},
+    {q:'크레이터로 뒤덮인 목성의 오래된 위성은?',a:'칼리스토',pool:'moon'},
+    {q:'거꾸로 도는 해왕성의 위성은?',a:'트리톤',pool:'moon'},
+    {q:'질소 간헐천을 뿜는 해왕성의 위성은?',a:'트리톤',pool:'moon'},
+    {q:'물기둥을 뿜는 토성의 하얀 얼음 위성은?',a:'엔셀라두스',pool:'moon'},
+    {q:'화성의 감자처럼 생긴 위성은?',a:'포보스',pool:'moon'},
+    {q:'화성의 더 작은 위성은?',a:'데이모스',pool:'moon'},
+    {q:'사람이 발자국을 남긴 유일한 천체는?',a:'달',pool:'moon'},
+    // ===== 왜소행성 (보기=왜소행성) =====
+    {q:'예전엔 9번째 행성이었던 왜소행성은?',a:'명왕성',pool:'dwarf'},
+    {q:'소행성대에서 가장 큰 천체(왜소행성)는?',a:'세레스',pool:'dwarf'},
+    {q:'럭비공처럼 길쭉하고 빨리 도는 왜소행성은?',a:'하우메아',pool:'dwarf'},
+    {q:'명왕성을 행성에서 빼게 만든, 비슷한 크기의 왜소행성은?',a:'에리스',pool:'dwarf'},
+    {q:'붉은 갈색을 띠는 먼 왜소행성은?',a:'마케마케',pool:'dwarf'},
+    {q:'위성 카론을 거느린 왜소행성은?',a:'명왕성',pool:'dwarf'},
+    {q:'화성과 목성 사이(소행성대)에 있는 왜소행성은?',a:'세레스',pool:'dwarf'},
+    // ===== 숫자·값 (보기 고정) =====
+    {q:'토성의 위성은 몇 개일까?',a:'274개',opts:['274개','95개','28개','2개']},
+    {q:'목성의 위성은 몇 개일까?',a:'95개',opts:['95개','274개','16개','1개']},
+    {q:'지구의 위성(달)은 몇 개일까?',a:'1개',opts:['1개','2개','0개','5개']},
+    {q:'화성의 위성은 몇 개일까?',a:'2개',opts:['2개','1개','0개','4개']},
+    {q:'수성의 위성은 몇 개일까?',a:'0개',opts:['0개','1개','2개','5개']},
+    {q:'태양계 행성은 모두 몇 개일까?',a:'8개',opts:['8개','9개','7개','10개']},
+    {q:'지구의 하루는 몇 시간일까?',a:'24시간',opts:['24시간','10시간','12시간','48시간']},
+    {q:'금성의 하루는 얼마나 길까?',a:'243일',opts:['243일','하루','10일','1년']},
+    {q:'지구가 태양을 한 바퀴 도는 시간은?',a:'365일',opts:['365일','30일','88일','10년']},
+    {q:'수성이 태양을 한 바퀴 도는 시간은?',a:'88일',opts:['88일','365일','687일','12년']},
+    {q:'화성의 1년은 얼마나 될까?',a:'687일',opts:['687일','365일','225일','88일']},
+    {q:'목성의 1년은 얼마나 될까?',a:'약 12년',opts:['약 12년','1년','29년','88일']},
+    {q:'해왕성의 1년은 얼마나 될까?',a:'약 165년',opts:['약 165년','84년','29년','12년']},
+    {q:'빛이 태양에서 지구까지 오는 데 걸리는 시간은?',a:'약 8분',opts:['약 8분','1초','1시간','하루']},
+    {q:'태양의 표면 온도는 대략?',a:'약 5500°C',opts:['약 5500°C','100°C','영하 50°C','100만°C']},
+    {q:'금성의 표면 온도는 대략?',a:'약 465°C',opts:['약 465°C','15°C','영하 60°C','100°C']},
+    {q:'지구의 평균 온도는 대략?',a:'약 15°C',opts:['약 15°C','465°C','영하 200°C','100°C']},
+    {q:'대표적인 왜소행성은 몇 개일까?',a:'5개',opts:['5개','8개','1개','100개']},
+    {q:'토성 고리는 주로 무엇으로 되어 있을까?',a:'얼음과 돌',opts:['얼음과 돌','불','물','구름']},
+    // ===== 우주 상식 (보기 고정) =====
+    {q:'태양은 무엇일까?',a:'별(항성)',opts:['별(항성)','행성','위성','혜성']},
+    {q:'지구를 도는 달은 무엇일까?',a:'위성',opts:['위성','항성','행성','혜성']},
+    {q:'태양 둘레를 도는 커다란 천체를 뭐라고 할까?',a:'행성',opts:['행성','위성','별','은하']},
+    {q:'꼬리를 끌며 지나가는 얼음·먼지 천체는?',a:'혜성',opts:['혜성','행성','위성','태양']},
+    {q:'화성과 목성 사이에 바위들이 모여 도는 곳은?',a:'소행성대',opts:['소행성대','카이퍼 벨트','고리','은하']},
+    {q:'스스로 빛을 내는 것은?',a:'태양',opts:['태양','지구','달','화성']},
+    {q:'우리 태양계가 속한 수많은 별들의 큰 무리는?',a:'은하',opts:['은하','행성','위성','고리']},
+    {q:'달이 차고 기우는 모양을 뭐라고 할까?',a:'달의 위상',opts:['달의 위상','일식','고리','계절']},
+    {q:'지구가 스스로 한 바퀴 도는 것을 뭐라고 할까?',a:'자전',opts:['자전','공전','위상','일식']},
+    {q:'지구가 태양 둘레를 도는 것을 뭐라고 할까?',a:'공전',opts:['공전','자전','위상','일식']},
+    {q:'낮과 밤이 생기는 이유는?',a:'지구의 자전',opts:['지구의 자전','지구의 공전','달','구름']},
+    {q:'태양계에서 가장 큰 천체는?',a:'태양',opts:['태양','목성','지구','토성']},
+    {q:'지구에서 가장 가까운 별은?',a:'태양',opts:['태양','북극성','달','목성']},
+    {q:'달이 태양을 가리는 현상은?',a:'일식',opts:['일식','월식','위상','자전']},
+    {q:'지구 그림자에 달이 가려지는 현상은?',a:'월식',opts:['월식','일식','공전','자전']},
+    {q:'생명이 산다고 알려진 유일한 곳은?',a:'지구',opts:['지구','달','화성','금성']},
+    {q:'태양계 한가운데에 있는 것은?',a:'태양',opts:['태양','지구','목성','달']},
+    {q:'행성이 스스로 도는 중심 축을 뭐라고 할까?',a:'자전축',opts:['자전축','궤도','고리','적도']},
+    {q:'별들이 밤하늘에 그리는 모양을 뭐라고 할까?',a:'별자리',opts:['별자리','행성','위성','혜성']},
+  ];
+  let score=0,answered=false;
+  function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+  function updateScore(){document.getElementById('quizScore').textContent='⭐ '+score+'개';}
+  function poolNames(pool){return pool==='moon'?MOONNAMES:(pool==='dwarf'?DWARFNAMES:PLANETNAMES);}
+  // ===== 문제 생성기 (수백 종류 · 한 판에 중복 없음) =====
+  const rint=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+  const rpick=arr=>arr[Math.floor(Math.random()*arr.length)];
+  const hasJong=w=>{const c=w.charCodeAt(w.length-1)-0xAC00;return c>=0&&c<11172&&c%28!==0;};
+  const wa=w=>w+(hasJong(w)?'과':'와');       // 받침 있으면 '과', 없으면 '와'
+  const eun=w=>w+(hasJong(w)?'은':'는');       // 받침 있으면 '은', 없으면 '는'
+  const kN=p=>parseInt(p.moons)||0;                          // 위성 개수(숫자)
+  const DWARFP=PLANETS.filter(p=>p.isDwarf);
+  const TERR=REALP.slice(0,4), GAS=REALP.slice(4,8);          // 지구형 / 목성형
+  const ORD=['첫','두','세','네','다섯','여섯','일곱','여덟'];
+  const ODDP=[REALP[0],REALP[2],REALP[4],REALP[6]];           // 홀수 번째
+  const EVENP=[REALP[1],REALP[3],REALP[5],REALP[7]];          // 짝수 번째
+  const MOONOPTS=['0개','1개','2개','5개','16개','28개','95개','274개'];
+  const CMP=[
+    {k:'big', hi:1, f:p=>p.rk,   q2:'더 큰 행성은?'},
+    {k:'sml', hi:0, f:p=>p.rk,   q2:'더 작은 행성은?'},
+    {k:'near',hi:0, f:p=>p.au,   q2:'태양에 더 가까운 행성은?'},
+    {k:'far', hi:1, f:p=>p.au,   q2:'태양에서 더 먼 행성은?'},
+    {k:'mmx', hi:1, f:kN,        q2:'위성(달)이 더 많은 행성은?'},
+    {k:'mmn', hi:0, f:kN,        q2:'위성(달)이 더 적은 행성은?'},
+    {k:'ymx', hi:1, f:p=>p.yearN,q2:'1년(공전)이 더 긴 행성은?'},
+    {k:'ymn', hi:0, f:p=>p.yearN,q2:'1년(공전)이 더 짧은 행성은?'},
+  ];
+  function numOpts(ans,spread){const s=new Set([ans]);let g=0;
+    while(s.size<4&&g++<60){const d=ans+rint(-spread,spread);if(d>=0)s.add(d);}
+    let k=1;while(s.size<4){s.add(ans+k);k++;}return shuffle([...s].map(String));}
+  function fourNames(ans,others){return shuffle([ans,...shuffle(others.filter(n=>n!==ans)).slice(0,3)]);}
+  function genQ(){
+    const r=Math.random();
+    // 1) 수학: 구구단·덧셈·뺄셈
+    if(r<0.20){const t=Math.random();
+      if(t<0.4){const a=rint(2,9),b=rint(2,9);
+        return {emoji:'✖️',q:`${a} 곱하기 ${b} 는?`,hint:`${a}단이에요! ${a}씩 ${b}묶음`,answer:String(a*b),opts:numOpts(a*b,6),key:`mul${a}x${b}`};}
+      if(t<0.7){const a=rint(2,19),b=rint(1,Math.min(19,30-a));
+        return {emoji:'➕',q:`${a} 더하기 ${b} 는?`,hint:'천천히 세어봐요',answer:String(a+b),opts:numOpts(a+b,5),key:`add${a}+${b}`};}
+      const a=rint(3,20),b=rint(1,a);
+      return {emoji:'➖',q:`${a} 빼기 ${b} 는?`,hint:'하나씩 빼봐요',answer:String(a-b),opts:numOpts(a-b,5),key:`sub${a}-${b}`};}
+    // 2) 우주 테마 수학
+    if(r<0.28){
+      if(Math.random()<0.5){const each=rint(2,5),n=rint(2,5);
+        return {emoji:'🪐',q:`행성 하나에 위성이 ${each}개씩 있대요. 행성 ${n}개면 위성은 모두 몇 개?`,hint:`${each} 곱하기 ${n}`,answer:String(each*n),opts:numOpts(each*n,5),key:`mm${each}x${n}`};}
+      const A=rpick(REALP),B=rpick(REALP.filter(p=>p!==A));
+      return {emoji:'🌙',q:`${A.ko} 위성 ${kN(A)}개와 ${B.ko} 위성 ${kN(B)}개를 더하면 모두 몇 개?`,hint:`${kN(A)} 더하기 ${kN(B)}`,answer:String(kN(A)+kN(B)),opts:numOpts(kN(A)+kN(B),6),key:`msum${A.ko}${B.ko}`};}
+    // 3) 지구형 / 목성형 분류
+    if(r<0.40){const m=rint(0,3);
+      if(m===0){const a=rpick(TERR);return {emoji:'🪨',q:'다음 중 지구형(암석) 행성은?',hint:'단단한 땅이 있는 행성',answer:a.ko,opts:fourNames(a.ko,GAS.map(p=>p.ko)),key:'terr'+a.ko};}
+      if(m===1){const a=rpick(GAS);return {emoji:'🌫️',q:'다음 중 목성형(가스) 행성은?',hint:'거대한 가스 덩어리',answer:a.ko,opts:fourNames(a.ko,TERR.map(p=>p.ko)),key:'gas'+a.ko};}
+      if(m===2){const a=rpick(GAS);return {emoji:'🪨',q:'지구형(암석) 행성이 아닌 것은?',hint:'가스 행성을 골라요',answer:a.ko,opts:fourNames(a.ko,TERR.map(p=>p.ko)),key:'nterr'+a.ko};}
+      const a=rpick(TERR);return {emoji:'🌫️',q:'목성형(가스) 행성이 아닌 것은?',hint:'암석 행성을 골라요',answer:a.ko,opts:fourNames(a.ko,GAS.map(p=>p.ko)),key:'ngas'+a.ko};}
+    // 4) 순서(몇 번째) · 홀짝
+    if(r<0.53){const m=rint(0,3);
+      if(m===0){const i=rint(0,7);return {emoji:'🔢',q:`태양에서 ${ORD[i]} 번째 행성은?`,hint:'수·금·지·화·목·토·천·해',answer:REALP[i].ko,opts:fourNames(REALP[i].ko,REALP.map(p=>p.ko)),key:'ord'+i};}
+      if(m===1){const i=rint(0,7);return {emoji:'🔢',q:`${eun(REALP[i].ko)} 태양에서 몇 번째 행성일까?`,hint:'안쪽부터 세어봐요',answer:ORD[i]+' 번째',opts:fourNames(ORD[i]+' 번째',ORD.map(o=>o+' 번째')),key:'ordn'+i};}
+      if(m===2){const a=rpick(ODDP);return {emoji:'1️⃣',q:'태양에서 홀수 번째(첫·세·다섯·일곱째) 행성은?',hint:'수성·지구·목성·천왕성',answer:a.ko,opts:fourNames(a.ko,EVENP.map(p=>p.ko)),key:'odd'+a.ko};}
+      const a=rpick(EVENP);return {emoji:'2️⃣',q:'태양에서 짝수 번째(둘·넷·여섯·여덟째) 행성은?',hint:'금성·화성·토성·해왕성',answer:a.ko,opts:fourNames(a.ko,ODDP.map(p=>p.ko)),key:'even'+a.ko};}
+    // 5) 둘 중 비교
+    if(r<0.66){const c=rpick(CMP);let A,B,g=0;
+      do{A=rpick(REALP);B=rpick(REALP.filter(p=>p!==A));g++;}while(c.f(A)===c.f(B)&&g<40);
+      const win=((c.f(A)>c.f(B))===!!c.hi)?A:B;
+      return {emoji:'⚖️',q:`${wa(A.ko)} ${B.ko} 중에 ${c.q2}`,hint:'둘 중 하나!',answer:win.ko,opts:shuffle([A.ko,B.ko]),key:'cmp'+c.k+[A.ko,B.ko].sort().join()};}
+    // 6) 위성 개수
+    if(r<0.74){const p=rpick(REALP.concat(DWARFP));
+      return {emoji:'🌙',q:`${p.ko}의 위성은 몇 개일까?`,hint:'',answer:p.moons,opts:fourNames(p.moons,MOONOPTS),key:'mc'+p.ko};}
+    // 7) 실제 사진 → 이름 맞히기
+    if(r<0.82){const p=rpick(REALP);return {emoji:p.emoji,q:'이 행성의 이름은?',hint:p.sub,answer:p.ko,opts:fourNames(p.ko,PLANETNAMES),key:'photo'+p.ko};}
+    // 8) 지식 은행(정적)
+    const it=QBANK[Math.floor(Math.random()*QBANK.length)];
+    const opts=it.opts?shuffle(it.opts.slice()):fourNames(it.a,poolNames(it.pool));
+    return {emoji:'❓',q:it.q,hint:'',answer:it.a,opts,key:'bank'+it.q};
+  }
+  const usedKeys=new Set();
+  function newQuestion(){answered=false;
+    let Q,g=0;do{Q=genQ();g++;}while(usedKeys.has(Q.key)&&g<80);
+    if(usedKeys.size>450)usedKeys.clear();
+    usedKeys.add(Q.key);
+    document.getElementById('quizEmoji').textContent=Q.emoji;
+    document.getElementById('quizQ').textContent=Q.q;
+    document.getElementById('quizHint').textContent=Q.hint||'';
+    const box=document.getElementById('quizOpts');box.innerHTML='';
+    Q.opts.forEach(name=>{const b=document.createElement('button');b.className='opt';b.textContent=name;
+      b.addEventListener('click',()=>Q.answer===name?onCorrect(b):onWrong(b));box.appendChild(b);});speak(Q.q);}
+  function onCorrect(b){if(answered)return;answered=true;b.classList.add('correct');
+    score++;updateScore();sfxRight();meteorBurst();speak('딩동댕! 정답이에요');setTimeout(newQuestion,1700);}
+  function onWrong(b){if(answered)return;b.classList.add('wrong');b.disabled=true;sfxWrong();speak('아쉬워요, 다시 해볼까요?');}
+  function openQuiz(){audio();closeCard();
+    if(!showLabels){showLabels=true;labelBtn.classList.remove('off');} // 이름표 켜서 답 찾기 쉽게
+    usedKeys.clear();                                    // 새 판 → 중복 없이 다시 출제
+    quizEl.classList.add('show');updateScore();newQuestion();
+    hintEl.textContent='❓ 모르면 화면의 행성을 눌러 찾아봐요!';hintEl.classList.remove('hide','pulse');}
+  function closeQuiz(){quizEl.classList.remove('show');if('speechSynthesis'in window)speechSynthesis.cancel();}
+  document.getElementById('quizClose').addEventListener('click',closeQuiz);
+
+  // ============ 버튼 ============
+  const playBtn=document.getElementById('playBtn');
+  playBtn.addEventListener('click',()=>{playing=!playing;playBtn.textContent=playing?'⏸ 멈춤':'▶ 시작';sfxClick();});
+  document.getElementById('speed').addEventListener('input',e=>{speed=e.target.value/100;
+    document.getElementById('speedValue').textContent=speed===0?'멈춤':(speed.toFixed(speed%1?1:0)+'일/초');});
+  const labelBtn=document.getElementById('labelBtn');
+  labelBtn.addEventListener('click',()=>{showLabels=!showLabels;labelBtn.classList.toggle('off',!showLabels);sfxClick();});
+  const orbitBtn=document.getElementById('orbitBtn');
+  orbitBtn.addEventListener('click',()=>{showOrbits=!showOrbits;orbitLines.forEach(o=>o.visible=showOrbits);orbitBtn.classList.toggle('off',!showOrbits);sfxClick();});
+  const axisBtn=document.getElementById('axisBtn');
+  axisBtn.addEventListener('click',()=>{showAxis=!showAxis;axisLines.forEach(a=>a.visible=showAxis);axisBtn.classList.toggle('off',!showAxis);sfxClick();});
+  const modeBtn=document.getElementById('modeBtn');
+  modeBtn.addEventListener('click',()=>{const real=!MODE_REAL;applyMode(real);
+    modeBtn.textContent=real?'🎡 탐험 모드':'🔭 실제 비율';modeBtn.classList.toggle('off',real);
+    hintEl.classList.remove('hide');hintEl.textContent=real?'🔭 실제 크기·거리예요! 행성이 아주 작죠? 우주는 이렇게 텅 비어 있어요. 행성을 눌러 가까이 가보세요':'🎡 탐험 모드 · 행성을 눌러 알아보기';
+    sfxClick();speak(real?'실제 크기와 거리예요. 우주는 정말 넓어요':'탐험 모드예요');});
+  const soundBtn=document.getElementById('soundBtn');
+  soundBtn.addEventListener('click',()=>{soundOn=!soundOn;soundBtn.classList.toggle('off',!soundOn);
+    soundBtn.textContent=soundOn?'🔊 소리':'🔇 소리';if(!soundOn&&'speechSynthesis'in window)speechSynthesis.cancel();else{audio();sfxClick();}});
+  document.getElementById('meteorBtn').addEventListener('click',()=>{audio();meteorBurst(SHOWERS[Math.floor(Math.random()*SHOWERS.length)]);});
+  document.getElementById('quizBtn').addEventListener('click',openQuiz);
+  document.getElementById('homeBtn').addEventListener('click',()=>{clearFocus();closeCard();closeQuiz();sfxClick();});
+
+  addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);sizeFx();});
+
+  // ============================================================
+  // ✨ 특별 기능: 도감 · 내 행성 만들기 · 우주 크기 여행 · 블랙홀
+  // ============================================================
+
+  // ----- 도감 -----
+  const DEX_ITEMS=[{ko:'태양',emoji:'☀️'}].concat(PLANETS.map(p=>({ko:p.ko,emoji:p.emoji}))).concat([
+    {ko:'달',emoji:'🌙'},{ko:'포보스',emoji:'🥔'},{ko:'데이모스',emoji:'🪨'},
+    {ko:'이오',emoji:'🌋'},{ko:'유로파',emoji:'🧊'},{ko:'가니메데',emoji:'🌑'},{ko:'칼리스토',emoji:'⚫'},
+    {ko:'엔셀라두스',emoji:'❄️'},{ko:'타이탄',emoji:'🟠'},{ko:'미란다',emoji:'🌘'},{ko:'티타니아',emoji:'⚪'},{ko:'트리톤',emoji:'🔵'},
+    {ko:'핼리 혜성',emoji:'☄️'},{ko:'거대한 별',emoji:'⭐'},{ko:'블랙홀',emoji:'🕳️'},{ko:'은하수',emoji:'🌌'}]);
+  let dexSeen=new Set();try{dexSeen=new Set(JSON.parse(localStorage.getItem('solardex')||'[]'));}catch(e){}
+  function markSeen(ko){if(ko&&!dexSeen.has(ko)){dexSeen.add(ko);try{localStorage.setItem('solardex',JSON.stringify([...dexSeen]));}catch(e){}}}
+  const dexSheet=document.getElementById('dexSheet');
+  function renderDex(){const cnt=DEX_ITEMS.filter(it=>dexSeen.has(it.ko)).length;
+    document.getElementById('dexBar').textContent=cnt+' / '+DEX_ITEMS.length+' 모았어요! ⭐';
+    document.getElementById('dexGrid').innerHTML=DEX_ITEMS.map(it=>{const has=dexSeen.has(it.ko);
+      return '<div class="dexcell'+(has?'':' locked')+'"><div class="ic">'+(has?it.emoji:'❓')+'</div><div class="nm">'+(has?it.ko:'???')+'</div></div>';}).join('');}
+
+  // ----- 내 행성 만들기 -----
+  function customTexture(color){const w=256,h=128,c=cvns(w,h),x=c.getContext('2d');x.fillStyle=color;x.fillRect(0,0,w,h);
+    spots(x,w,h,240,[shade(color,-32),shade(color,30),shade(color,-58),shade(color,48)],2,7,.2,.55);return tx(c);}
+  const creatorSheet=document.getElementById('creatorSheet');
+  const CCOLORS=['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#9775fa','#ff8ed4','#63e6be'];
+  let cCfg={color:CCOLORS[3],size:1,ring:false},customCount=0;
+  function updatePreview(){const el=document.getElementById('cPreview');
+    el.style.background='radial-gradient(circle at 35% 30%, '+shade(cCfg.color,60)+', '+cCfg.color+' 70%, '+shade(cCfg.color,-50)+')';
+    el.style.boxShadow=(cCfg.ring?'0 0 0 5px rgba(255,255,255,.16), ':'')+'inset -10px -10px 22px rgba(0,0,0,.5),0 0 22px rgba(255,255,255,.15)';
+    const sz=[70,90,110][cCfg.size];el.style.width=sz+'px';el.style.height=sz+'px';}
+  function buildCreatorUI(){
+    const sw=document.getElementById('cSwatches');sw.innerHTML=CCOLORS.map(c=>'<div class="sw'+(c===cCfg.color?' sel':'')+'" data-c="'+c+'" style="background:'+c+'"></div>').join('');
+    sw.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>{cCfg.color=s.dataset.c;buildCreatorUI();updatePreview();sfxClick();}));
+    const sizeBox=document.getElementById('cSize');sizeBox.innerHTML=['작게','보통','크게'].map((s,i)=>'<button class="'+(i===cCfg.size?'sel':'')+'" data-s="'+i+'">'+s+'</button>').join('');
+    sizeBox.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{cCfg.size=+b.dataset.s;buildCreatorUI();updatePreview();sfxClick();}));
+    const ringBox=document.getElementById('cRing');ringBox.innerHTML=['없음','있음 💍'].map((s,i)=>'<button class="'+((!!i===cCfg.ring)?'sel':'')+'" data-r="'+i+'">'+s+'</button>').join('');
+    ringBox.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{cCfg.ring=b.dataset.r==='1';buildCreatorUI();updatePreview();sfxClick();}));}
+  function makeCustomPlanet(cfg,save){
+    const idx=customCount++,sizes=[1.2,2.0,3.0],funR=sizes[cfg.size]!==undefined?sizes[cfg.size]:2.0,funDist=214+idx*15;
+    const p={ko:cfg.name||'내 행성',emoji:'🪐',type:'custom',base:cfg.color,funR:funR,funDist:funDist,
+      rk:funR*3500,au:8+idx*2.5,orbit:120+idx*18,spin:1.2,tilt:0.3,ring:!!cfg.ring,custom:true,kind:'custom',
+      sub:'내가 만든 행성 💜',factList:[['만든이','나!'],['크기',['작아요','보통','커요'][cfg.size]||'보통'],['고리',cfg.ring?'있어요':'없어요'],['특별함','최고!']],
+      wow:'<b>내가 직접</b> 만든 특별한 행성이에요! 이름은 <b>'+(cfg.name||'내 행성')+'</b> 💜'};
+    const pivot=new THREE.Object3D();pivot.rotation.y=rnd(0,TWO);scene.add(pivot);
+    const holder=new THREE.Object3D();pivot.add(holder);
+    const mesh=new THREE.Mesh(UNIT,new THREE.MeshStandardMaterial({map:customTexture(cfg.color),roughness:1,metalness:0}));
+    mesh.userData.data=p;p._mesh=mesh;
+    const tilt=new THREE.Object3D();tilt.rotation.z=p.tilt;holder.add(tilt);tilt.add(mesh);clickMeshes.push(mesh);
+    if(p.ring){const inner=1.4,outer=2.2,rg=new THREE.RingGeometry(inner,outer,60),pa=rg.attributes.position,v=new THREE.Vector3();
+      for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i);rg.attributes.uv.setXY(i,(v.length()-inner)/(outer-inner),0.5);}
+      const ring=new THREE.Mesh(rg,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.4,side:THREE.DoubleSide}));
+      ring.rotation.x=Math.PI/2;mesh.add(ring);}
+    const axis=new THREE.Line(AXISGEO,new THREE.LineBasicMaterial({color:0xbfe6ff,transparent:true,opacity:.32,depthWrite:false}));
+    axis.visible=showAxis;mesh.add(axis);axisLines.push(axis);
+    const b={pivot:pivot,holder:holder,tilt:tilt,mesh:mesh,axis:axis,p:p,moonPivots:[]};
+    const ol=new THREE.Line(ORBITGEO,new THREE.LineBasicMaterial({color:0x9dff9d,transparent:true,opacity:.25}));
+    ol.visible=showOrbits;scene.add(ol);orbitLines.push(ol);b.orbit=ol;
+    const lab={mesh:mesh,p:p,label:mkLabel(p,''),off:19};
+    bodies.push(b);labeled.push(lab);b.lab=lab;p._body=b;p._cfg=cfg;
+    const R=MODE_REAL?p.rk*KM:p.funR,D=MODE_REAL?p.au*AUU:p.funDist;
+    p._r=R;mesh.scale.setScalar(R);holder.position.x=D;ol.scale.setScalar(D);return b;}
+  let customPlanets=[];try{customPlanets=JSON.parse(localStorage.getItem('myplanets')||'[]');}catch(e){}
+  function saveCustom(){try{localStorage.setItem('myplanets',JSON.stringify(customPlanets));}catch(e){}}
+  customPlanets.slice(0,8).forEach(cfg=>makeCustomPlanet(cfg));
+  function openCreator(){document.getElementById('cName2').value='반짝이';buildCreatorUI();updatePreview();showSheet(creatorSheet);}
+  document.getElementById('cLaunch').addEventListener('click',()=>{
+    const name=(document.getElementById('cName2').value||'반짝이').slice(0,6);
+    const cfg={color:cCfg.color,size:cCfg.size,ring:cCfg.ring,name:name};
+    customPlanets.push(cfg);saveCustom();
+    const b=makeCustomPlanet(cfg);
+    hideSheet(creatorSheet);sfxClick();speak(name+' 행성이 태어났어요!');markSeen(name);if(!MODE_REAL)focusOn(b.p);});
+  function deleteCustomPlanet(p){const b=p&&p._body;if(!b)return;
+    if(focusMesh===b.mesh)clearFocus();
+    scene.remove(b.pivot);scene.remove(b.orbit);
+    let i=bodies.indexOf(b);if(i>=0)bodies.splice(i,1);
+    i=orbitLines.indexOf(b.orbit);if(i>=0)orbitLines.splice(i,1);
+    i=clickMeshes.indexOf(b.mesh);if(i>=0)clickMeshes.splice(i,1);
+    b.mesh.children.forEach(ch=>{const ai=axisLines.indexOf(ch);if(ai>=0)axisLines.splice(ai,1);});
+    if(b.lab){const li=labeled.indexOf(b.lab);if(li>=0)labeled.splice(li,1);b.lab.label.remove();}
+    i=customPlanets.indexOf(p._cfg);if(i>=0){customPlanets.splice(i,1);saveCustom();}
+    closeCard();sfxClick();speak(p.ko+' 행성을 지웠어요');}
+
+  // ----- 우주 크기 여행 & 블랙홀 (2D 캔버스 씬) -----
+  const cosmicEl=document.getElementById('cosmic'),ccv=document.getElementById('cosmicCanvas'),cctx=ccv.getContext('2d');
+  // 실제 사진 텍스처(태양·행성·달)를 모두 불러오기
+  const cImgs={};['mercury','venus','earth','mars','jupiter','saturn','uranus','neptune','moon','sun',
+    'io','europa','ganymede','callisto','titan','triton','enceladus','pluto','ceres'].forEach(k=>{if(TEX[k]){const im=new Image();im.src=TEX[k];cImgs[k]=im;}});
+  // 실제 사진이 없는 위성·왜소행성은 실제 모습을 참고한 그림으로 (2D 캔버스)
+  function pc(){const c=document.createElement('canvas');c.width=c.height=256;return c;}
+  function rand(a,b){return a+Math.random()*(b-a);}
+  function blobs(x,n,cols,rmin,rmax,amin,amax){for(let i=0;i<n;i++){x.globalAlpha=rand(amin,amax);x.fillStyle=cols[Math.floor(Math.random()*cols.length)];x.beginPath();x.arc(rand(0,256),rand(0,256),rand(rmin,rmax),0,TWO);x.fill();}x.globalAlpha=1;}
+  const PROC={
+    enceladus(x){x.fillStyle='#f4f8fb';x.fillRect(0,0,256,256);blobs(x,50,['#e6eef4','#ffffff'],8,26,.3,.6);
+      x.strokeStyle='rgba(120,170,210,0.5)';x.lineWidth=4;for(let i=0;i<5;i++){x.beginPath();const y=150+i*13;x.moveTo(60,y);x.lineTo(200,y+rand(-8,8));x.stroke();}},
+    ceres(x){x.fillStyle='#9a938a';x.fillRect(0,0,256,256);blobs(x,120,['#7f786e','#b6ad9f','#5f594e'],3,14,.35,.75);
+      x.globalAlpha=.9;x.fillStyle='#fff';x.beginPath();x.arc(150,110,7,0,TWO);x.fill();x.globalAlpha=.3;x.beginPath();x.arc(150,110,16,0,TWO);x.fill();x.globalAlpha=1;},
+    pluto(x){x.fillStyle='#b8a48c';x.fillRect(0,0,256,256);blobs(x,60,['#a8917a','#cbb79c'],14,40,.3,.6);
+      x.globalAlpha=.5;x.fillStyle='#6a5642';x.save();x.translate(46,122);x.scale(1.25,1);x.beginPath();x.arc(0,0,44,0,TWO);x.fill();x.restore();
+      blobs(x,10,['#6a5642','#5a4838'],10,22,.3,.5);x.globalAlpha=1;
+      x.fillStyle='#e9dcc4';x.globalAlpha=.92;const hx=150,hy=152,s=28;x.beginPath();
+      x.moveTo(hx,hy+s);x.bezierCurveTo(hx-s*1.5,hy-s*0.4,hx-s*0.3,hy-s*1.25,hx,hy-s*0.3);
+      x.bezierCurveTo(hx+s*0.3,hy-s*1.25,hx+s*1.5,hy-s*0.4,hx,hy+s);x.fill();x.globalAlpha=1;},
+    triton(x){x.fillStyle='#e2c8cf';x.fillRect(0,0,256,256);blobs(x,80,['#d3b3bd','#f0dde3'],10,26,.3,.6);
+      x.strokeStyle='rgba(120,90,110,0.4)';x.lineWidth=3;for(let i=0;i<80;i++){x.beginPath();x.arc(rand(0,256),rand(0,180),rand(6,15),0,Math.PI*rand(1,2));x.stroke();}
+      x.globalAlpha=.35;x.fillStyle='#f2e2e8';x.fillRect(0,192,256,64);x.globalAlpha=1;},
+    europa(x){x.fillStyle='#d9cdbb';x.fillRect(0,0,256,256);blobs(x,60,['#efe7d8','#cfc3b0'],10,40,.4,.8);
+      x.strokeStyle='rgba(150,80,55,0.5)';x.lineWidth=2;for(let i=0;i<26;i++){const y=rand(0,256);x.beginPath();x.moveTo(0,y);x.bezierCurveTo(80,y+rand(-40,40),170,y+rand(-40,40),256,y+rand(-30,30));x.stroke();}},
+    io(x){x.fillStyle='#e6d24a';x.fillRect(0,0,256,256);blobs(x,140,['#c96a1a','#a83a1a','#f0e08a','#7a2a10','#fff2b0'],3,16,.35,.8);blobs(x,40,['#5a2a10','#151008'],2,6,.5,.9);},
+    titan(x){x.fillStyle='#d99a34';x.fillRect(0,0,256,256);for(let i=0;i<256;i+=6){x.globalAlpha=.12;x.fillStyle=(i/6)%2?'#efc27a':'#c07f2a';x.fillRect(0,i,256,6);}x.globalAlpha=1;blobs(x,30,['#e8b45a','#c78a30'],14,40,.15,.35);},
+    ganymede(x){x.fillStyle='#8a7f6e';x.fillRect(0,0,256,256);blobs(x,50,['#6a5f50','#4f463a'],20,50,.3,.6);blobs(x,60,['#a89c88','#b8ad98'],8,22,.25,.5);blobs(x,50,['#d8cdba','#fff'],2,5,.4,.8);}
+  };
+  const srcCache={};
+  function procCanvas(name){if(!srcCache[name]){const c=pc();(PROC[name]||PROC.ceres)(c.getContext('2d'));srcCache[name]=c;}return srcCache[name];}
+  function bodySource(step){return step.kind==='real'?cImgs[step.key]:(step.kind==='proc'?procCanvas(step.paint):null);}
+  const REF_EARTH={name:'지구',s:'가',kind:'real',key:'earth',r:6371};
+  const REF_SUN={name:'태양',s:'이',kind:'real',key:'sun',r:696000};
+  // 작은 것 → 큰 것 (r = 실제 반지름 km)
+  const JOURNEY=[
+    {name:'엔셀라두스',r:252,kind:'real',key:'enceladus',fact:'토성의 하얀 얼음 위성. 물기둥을 뿜어요!'},
+    {name:'세레스',r:473,kind:'real',key:'ceres',fact:'소행성대의 왜소행성. 밝은 점이 반짝여요.'},
+    {name:'명왕성',r:1188,kind:'real',key:'pluto',fact:'하트 무늬가 있는 왜소행성! 아주 멀고 차가워요.'},
+    {name:'트리톤',r:1353,kind:'real',key:'triton',fact:'해왕성의 위성. 거꾸로 돌고 질소를 뿜어요.'},
+    {name:'유로파',r:1561,kind:'real',key:'europa',fact:'얼음에 금이 간 목성의 위성. 아래엔 바다가!'},
+    {name:'달',r:1737,kind:'real',key:'moon',fact:'지구의 친구, 달! 크레이터가 가득해요.'},
+    {name:'이오',r:1822,kind:'real',key:'io',fact:'화산이 가장 많은 노란 위성이에요.'},
+    {name:'칼리스토',r:2410,kind:'real',key:'callisto',fact:'크레이터로 뒤덮인 목성의 오래된 위성.'},
+    {name:'수성',r:2440,kind:'real',key:'mercury',fact:'태양과 가장 가까운 꼬마 행성. 달을 조금 넘어요.'},
+    {name:'타이탄',r:2575,kind:'real',key:'titan',fact:'두꺼운 주황 대기의 토성 위성. 수성만 해요!'},
+    {name:'가니메데',r:2634,kind:'real',key:'ganymede',fact:'태양계에서 가장 큰 위성! 수성보다 커요.'},
+    {name:'화성',r:3390,kind:'real',key:'mars',fact:'붉은 행성 화성. 지구의 절반쯤이에요.'},
+    {name:'금성',r:6052,kind:'real',key:'venus',fact:'지구랑 크기가 비슷한 뜨거운 행성.'},
+    {name:'지구',r:6371,kind:'real',key:'earth',fact:'우리가 사는 지구! 이제부터 비교의 기준이에요. 🌍'},
+    {name:'해왕성',r:24622,kind:'real',key:'neptune',fact:'파란 얼음 행성. 지구가 4배쯤 들어가요.'},
+    {name:'천왕성',r:25362,kind:'real',key:'uranus',fact:'옆으로 누운 얼음 행성. 해왕성과 비슷해요.'},
+    {name:'토성',r:58232,kind:'real',key:'saturn',fact:'고리의 왕 토성! 지구가 9배쯤 커요.'},
+    {name:'목성',r:69911,kind:'real',key:'jupiter',fact:'가장 큰 행성! 지구가 11배, 부피는 1300배!'},
+    {name:'프록시마 센타우리',r:104400,kind:'star',col:'#e0472a',fact:'가장 가까운 별(적색왜성). 작고 어두운 빨간 별이에요.'},
+    {name:'태양',r:696000,kind:'real',key:'sun',fact:'우리 별, 태양! 지구가 109개 늘어서야 지름이 돼요.'},
+    {name:'시리우스',r:1190000,kind:'star',col:'#dbe8ff',fact:'밤하늘에서 가장 밝은 별. 태양보다 조금 커요.'},
+    {name:'아크투루스',r:17400000,kind:'star',col:'#ffc27a',fact:'주황색 거대별. 태양이 25배 들어가요.'},
+    {name:'리겔',r:54000000,kind:'star',col:'#bcd4ff',fact:'파란 초거성! 아주 뜨겁고 밝아요.'},
+    {name:'베텔게우스',r:487000000,kind:'star',col:'#ff7a4d',fact:'빨간 초거성! 태양이 700배나 들어가요.'},
+    {name:'UY 스쿠티',r:1183000000,kind:'star',col:'#ff6a3d',fact:'엄청나게 큰 빨간 별! 태양이 17억 개!'},
+    {name:'스티븐슨 2-18',r:1496000000,kind:'star',col:'#ff5f3a',fact:'알려진 가장 큰 별 중 하나! 상상도 안 될 크기예요.'},
+    {name:'블랙홀',r:0,kind:'blackhole',fact:'빛도 빠져나올 수 없어요! 화면을 톡톡 눌러봐요.'}];
+  let cosmicStep=0,cosmicActive=false,cosmicRAF=0,cstars=[],infall=[];
+  function sizeCosmic(){ccv.width=innerWidth;ccv.height=innerHeight;}
+  function buildCosmicStars(){cstars=[];for(let i=0;i<240;i++)cstars.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.4+.3,tw:Math.random()*7,sp:Math.random()*.05+.01});}
+  function drawCosmicStars(t){for(const s of cstars){cctx.globalAlpha=.4+.5*Math.abs(Math.sin(t*s.sp*20+s.tw));cctx.fillStyle='#fff';cctx.beginPath();cctx.arc(s.x,s.y,s.r,0,TWO);cctx.fill();}cctx.globalAlpha=1;}
+  function drawTexCircle(im,cx,cy,r){const ok=im&&im.width&&im.complete!==false;if(!ok){cctx.fillStyle='#8899aa';cctx.beginPath();cctx.arc(cx,cy,r,0,TWO);cctx.fill();}
+    else{cctx.save();cctx.beginPath();cctx.arc(cx,cy,r,0,TWO);cctx.clip();const s=Math.min(im.width,im.height);
+      cctx.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,cx-r,cy-r,r*2,r*2);cctx.restore();}
+    const g=cctx.createRadialGradient(cx-r*.32,cy-r*.32,r*.2,cx,cy,r);g.addColorStop(0,'rgba(255,255,255,.16)');g.addColorStop(.7,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.5)');
+    cctx.fillStyle=g;cctx.beginPath();cctx.arc(cx,cy,r,0,TWO);cctx.fill();}
+  // 별: 태양 사진을 별 색으로 물들여 진짜 별처럼 (표면 알갱이 + 코로나 + 가장자리 어둡게)
+  function drawStar(cx,cy,r,col){
+    const g=cctx.createRadialGradient(cx,cy,r*0.7,cx,cy,r*1.55);g.addColorStop(0,col);g.addColorStop(1,'rgba(0,0,0,0)');
+    cctx.globalAlpha=.6;cctx.fillStyle=g;cctx.beginPath();cctx.arc(cx,cy,r*1.55,0,TWO);cctx.fill();cctx.globalAlpha=1;
+    cctx.save();cctx.beginPath();cctx.arc(cx,cy,r,0,TWO);cctx.clip();
+    const sun=cImgs.sun;
+    if(sun&&sun.width){const s=Math.min(sun.width,sun.height);cctx.drawImage(sun,(sun.width-s)/2,(sun.height-s)/2,s,s,cx-r,cy-r,r*2,r*2);
+      cctx.globalCompositeOperation='color';cctx.fillStyle=col;cctx.fillRect(cx-r,cy-r,r*2,r*2);
+      cctx.globalCompositeOperation='overlay';cctx.globalAlpha=.4;cctx.fillStyle=col;cctx.fillRect(cx-r,cy-r,r*2,r*2);
+      cctx.globalAlpha=1;cctx.globalCompositeOperation='source-over';}
+    else{cctx.fillStyle=col;cctx.fillRect(cx-r,cy-r,r*2,r*2);}
+    const ld=cctx.createRadialGradient(cx,cy,r*0.5,cx,cy,r);ld.addColorStop(0,'rgba(0,0,0,0)');ld.addColorStop(1,'rgba(0,0,0,0.45)');
+    cctx.fillStyle=ld;cctx.fillRect(cx-r,cy-r,r*2,r*2);cctx.restore();}
+  function drawBlackHole(t){const cx=innerWidth/2,cy=innerHeight*0.5,R=Math.min(innerWidth,innerHeight)*0.12;
+    cctx.save();cctx.translate(cx,cy);
+    cctx.save();cctx.scale(1,0.30);                     // 강착원반 뒤쪽
+    for(let i=0;i<200;i++){const a=i/200*TWO+t*0.7,rr=R*(1.5+((i*7)%50)/50*2.0),dop=0.5+0.5*Math.cos(a);
+      cctx.globalAlpha=.12+.55*dop;cctx.fillStyle='rgba(255,'+Math.floor(150+90*dop)+','+Math.floor(50+50*dop)+',1)';
+      cctx.beginPath();cctx.arc(Math.cos(a)*rr,Math.sin(a)*rr,2.3,0,TWO);cctx.fill();}
+    cctx.restore();
+    cctx.globalAlpha=1;cctx.fillStyle='#000';cctx.beginPath();cctx.arc(0,0,R,0,TWO);cctx.fill();       // 사건의 지평선
+    cctx.globalAlpha=.95;cctx.lineWidth=Math.max(2,R*0.06);cctx.strokeStyle='rgba(255,225,160,0.95)';   // 광자 고리
+    cctx.beginPath();cctx.arc(0,0,R*1.03,0,TWO);cctx.stroke();
+    cctx.save();cctx.scale(1,0.30);                     // 위로 넘어오는 밝은 아크(렌즈 느낌)
+    for(let i=0;i<200;i++){const a=i/200*Math.PI-t*0.7,rr=R*(1.5+((i*7)%50)/50*2.0),dop=0.5+0.5*Math.cos(a);
+      cctx.globalAlpha=.10+.5*dop;cctx.fillStyle='rgba(255,'+Math.floor(150+90*dop)+','+Math.floor(50+50*dop)+',1)';
+      cctx.beginPath();cctx.arc(Math.cos(a)*rr,-Math.abs(Math.sin(a))*rr,2.3,0,TWO);cctx.fill();}
+    cctx.restore();cctx.restore();cctx.globalAlpha=1;}
+  function updateInfall(){const cx=innerWidth/2,cy=innerHeight*0.5,horizon=Math.min(innerWidth,innerHeight)*0.12;
+    for(let i=infall.length-1;i>=0;i--){const p=infall[i];p.d*=0.955;p.a+=0.14;
+      cctx.fillStyle='rgba(255,240,200,0.95)';cctx.beginPath();cctx.arc(cx+Math.cos(p.a)*p.d,cy+Math.sin(p.a)*p.d*0.5,2,0,TWO);cctx.fill();
+      if(p.d<horizon)infall.splice(i,1);}}
+  function cosmicLoop(){if(!cosmicActive)return;cosmicRAF=requestAnimationFrame(cosmicLoop);
+    const t=performance.now()/1000;cctx.fillStyle='#03010a';cctx.fillRect(0,0,innerWidth,innerHeight);drawCosmicStars(t);
+    const step=JOURNEY[cosmicStep];
+    if(step.kind==='blackhole'){drawBlackHole(t);updateInfall();return;}
+    // 현재 천체와 기준 천체(지구/태양)를 실제 비율로 나란히 → 대소가 한눈에
+    const minDim=Math.min(innerWidth,innerHeight),R_MIN=minDim*0.055,gap=minDim*0.05;
+    const ref=step.r>696000?REF_SUN:REF_EARTH, ratio=step.r/ref.r, big=Math.max(step.r,ref.r);
+    let R_MAX=minDim*0.30, curBR=Math.max(R_MIN,R_MAX*step.r/big), refBR=Math.max(R_MIN,R_MAX*ref.r/big);
+    const maxW=innerWidth*0.9, tW=curBR*2+gap+refBR*2;if(tW>maxW){const f=maxW/tW;curBR*=f;refBR*=f;}
+    const bigBR=Math.max(curBR,refBR), maxH=innerHeight*0.46;if(bigBR*2>maxH){const f=maxH/(bigBR*2);curBR*=f;refBR*=f;}
+    const baseY=innerHeight*0.58+Math.max(curBR,refBR);            // 바닥선 맞춤(=키 재듯 비교)
+    const startX=(innerWidth-(curBR*2+gap+refBR*2))/2, curX=startX+curBR, refX=curX+curBR+gap+refBR;
+    if(step.kind==='star')drawStar(curX,baseY-curBR,curBR,step.col);else drawTexCircle(bodySource(step),curX,baseY-curBR,curBR);
+    drawTexCircle(cImgs[ref.key],refX,baseY-refBR,refBR);
+    cctx.textAlign='center';
+    cctx.fillStyle='#fff';cctx.font='bold 18px Jua, sans-serif';cctx.fillText(step.name,curX,baseY+26);
+    cctx.fillStyle='#bfe6ff';cctx.font='bold 16px Jua, sans-serif';cctx.fillText(ref.name,refX,baseY+24);
+    const msg=ratio>=1.15?(ref.name+'보다 '+Math.round(ratio)+'배 커요!')
+      :(ratio<=0.87?(ref.name+ref.s+' '+Math.round(1/ratio)+'배 더 커요!'):(ref.name+'랑 크기가 비슷해요!'));
+    cctx.fillStyle='#ffe6b0';cctx.font='bold 19px Jua, sans-serif';cctx.fillText(msg,innerWidth/2,baseY+54);}
+  function updateCosmicText(){const s=JOURNEY[cosmicStep];document.getElementById('cosmicName').textContent=s.name;document.getElementById('cosmicFact').textContent=s.fact;
+    markSeen('거대한 별');markSeen('은하수');if(s.kind==='blackhole')markSeen('블랙홀');speak(s.name+'. '+s.fact);}
+  function openCosmic(step){audio();sizeCosmic();buildCosmicStars();infall=[];cosmicStep=step||0;cosmicActive=true;cosmicEl.classList.add('show');updateCosmicText();cosmicLoop();}
+  function closeCosmic(){cosmicActive=false;cancelAnimationFrame(cosmicRAF);cosmicEl.classList.remove('show');if('speechSynthesis'in window)speechSynthesis.cancel();}
+  function cosmicGo(d){cosmicStep=Math.max(0,Math.min(JOURNEY.length-1,cosmicStep+d));infall=[];updateCosmicText();sfxClick();}
+  document.getElementById('cosmicNext').addEventListener('click',()=>cosmicGo(1));
+  document.getElementById('cosmicPrev').addEventListener('click',()=>cosmicGo(-1));
+  document.getElementById('cosmicExit').addEventListener('click',()=>{closeCosmic();sfxClick();});
+  ccv.addEventListener('pointerdown',()=>{if(!cosmicActive||JOURNEY[cosmicStep].kind!=='blackhole')return;
+    for(let i=0;i<12;i++)infall.push({a:Math.random()*TWO,d:Math.min(innerWidth,innerHeight)*(0.32+Math.random()*0.12)});sfxClick();});
+  addEventListener('resize',()=>{if(cosmicActive)sizeCosmic();});
+
+  // ----- 🌅 지구의 하루와 계절 -----
+  const earthEl=document.getElementById('earthScene'),ecv=document.getElementById('earthCanvas'),ectx=ecv.getContext('2d');
+  let earthActive=false,earthRAF=0,eLast=0,dayT=0.23,sea=0.0,moonPhase=0.18,seasonAuto=true,estars=[],curSzn=-1;
+  const SZN_NAMES=['봄','여름','가을','겨울'],SZN_EMO=['🌸','☀️','🍂','❄️'],SZN_BTN=['eSpring','eSummer','eAutumn','eWinter'];
+  const SZN_INFO=['자전축이 옆으로! 낮과 밤 길이가 비슷해요 🌸','자전축이 태양 쪽으로 기울어 해가 높이 떠요! 낮이 길어요 ☀️',
+    '자전축이 옆으로! 낮과 밤 길이가 비슷해요 🍂','자전축이 반대로 기울어 해가 낮게 떠요! 낮이 짧아요 ❄️'];
+  function mixHex(a,b,t){const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);
+    let r=Math.round((pa>>16)+(((pb>>16))-(pa>>16))*t),g=Math.round(((pa>>8)&255)+((((pb>>8)&255))-((pa>>8)&255))*t),bl=Math.round((pa&255)+((pb&255)-(pa&255))*t);
+    r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));bl=Math.max(0,Math.min(255,bl));
+    return '#'+((1<<24)+(r<<16)+(g<<8)+bl).toString(16).slice(1);}
+  function sizeEarth(){ecv.width=innerWidth;ecv.height=innerHeight;}
+  function buildEStars(){estars=[];for(let i=0;i<170;i++)estars.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.66,r:Math.random()*1.3+.3,tw:Math.random()*7});}
+  function eMoonDisk(cx,cy,r){const im=cImgs.moon;if(im&&im.width){ectx.save();ectx.beginPath();ectx.arc(cx,cy,r,0,TWO);ectx.clip();
+    const s=Math.min(im.width,im.height);ectx.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,cx-r,cy-r,r*2,r*2);ectx.restore();}
+    else{ectx.fillStyle='#d8d5cc';ectx.beginPath();ectx.arc(cx,cy,r,0,TWO);ectx.fill();}}
+  function eMoon(cx,cy,r,phase){eMoonDisk(cx,cy,r);
+    ectx.save();ectx.beginPath();ectx.arc(cx,cy,r,0,TWO);ectx.clip();ectx.fillStyle='rgba(6,9,22,0.92)';
+    const p=((phase%1)+1)%1, ex=Math.cos(p*TWO)*r, waxing=p<0.5;
+    ectx.beginPath();ectx.arc(cx,cy,r,-Math.PI/2,Math.PI/2,waxing);
+    ectx.ellipse(cx,cy,Math.abs(ex),r,0,Math.PI/2,-Math.PI/2,(ex<0)!==waxing);
+    ectx.closePath();ectx.fill();ectx.restore();}
+  function eDisk(cx,cy,r,cols){const g=ectx.createRadialGradient(cx-r*.3,cy-r*.3,r*.1,cx,cy,r);
+    g.addColorStop(0,cols[0]);g.addColorStop(1,cols[1]);ectx.fillStyle=g;ectx.beginPath();ectx.arc(cx,cy,r,0,TWO);ectx.fill();}
+  function drawEarthScene(){
+    const W=innerWidth,H=innerHeight,horizon=H*0.70,skyH=H*0.62;
+    // 계절에 따른 태양 고도/낮 길이 (자전축 기울기 효과)
+    const tilt=Math.cos(TWO*(sea-0.25));            // +1 여름, -1 겨울
+    const dayLen=0.5+0.20*tilt, noonAlt=0.5+0.34*tilt;
+    const sunrise=0.5-dayLen/2, sunset=0.5+dayLen/2;
+    const sunFrac=(dayT-sunrise)/dayLen;            // 0(뜸)~1(짐)
+    const sunElev=Math.sin(Math.PI*sunFrac)*noonAlt;// 부호 있는 고도
+    const sunUp=sunElev>0;
+    const dayF=Math.max(0,Math.min(1,(sunElev+0.06)/0.42));
+    const glow=Math.exp(-Math.pow(sunElev/0.13,2))*Math.max(0,Math.min(1,(sunElev+0.16)/0.16));
+    // 하늘
+    let top=mixHex('#0a1030','#4a90d8',dayF), bot=mixHex('#0c1638','#cfe6ff',dayF);
+    bot=mixHex(bot,'#ff8a4a',glow*0.85);top=mixHex(top,'#b0602f',glow*0.35);
+    const sg=ectx.createLinearGradient(0,0,0,horizon);sg.addColorStop(0,top);sg.addColorStop(1,bot);
+    ectx.fillStyle=sg;ectx.fillRect(0,0,W,horizon);
+    // 별
+    const sa=Math.max(0,Math.min(1,(0.04-sunElev)/0.18));
+    if(sa>0){const t=performance.now()/1000;for(const s of estars){ectx.globalAlpha=sa*(0.5+0.5*Math.abs(Math.sin(t+s.tw)));
+      ectx.fillStyle='#fff';ectx.beginPath();ectx.arc(s.x,s.y,s.r,0,TWO);ectx.fill();}ectx.globalAlpha=1;}
+    // ☀️ 해의 하루 경로(호) — 계절마다 높이가 달라져요 (자전축 기울기 → 고도)
+    [[0.84,'#ffdf8a',0.20],[0.16,'#a9d0ff',0.20],[noonAlt,'#ffffff',0.6]].forEach(function(a,idx){
+      ectx.save();ectx.globalAlpha=a[2];ectx.strokeStyle=a[1];ectx.lineWidth=idx===2?3:2;ectx.setLineDash([9,9]);
+      ectx.beginPath();for(let i=0;i<=48;i++){const f=i/48,ax=W*(0.12+0.76*f),ay=horizon-Math.sin(Math.PI*f)*a[0]*skyH;i?ectx.lineTo(ax,ay):ectx.moveTo(ax,ay);}
+      ectx.stroke();ectx.setLineDash([]);ectx.restore();});
+    ectx.globalAlpha=.65;ectx.font='13px Jua,sans-serif';ectx.textAlign='left';
+    ectx.fillStyle='#ffdf8a';ectx.fillText('여름 해 길',W*0.13,horizon-0.84*skyH-8);
+    ectx.fillStyle='#a9d0ff';ectx.fillText('겨울 해 길',W*0.13,horizon-0.16*skyH+18);ectx.globalAlpha=1;
+    const altDeg=Math.round(53+23.4*tilt),peakX=W*0.5,peakY=horizon-noonAlt*skyH;
+    ectx.setLineDash([4,5]);ectx.strokeStyle='rgba(255,255,255,.45)';ectx.lineWidth=1.5;
+    ectx.beginPath();ectx.moveTo(peakX,peakY+6);ectx.lineTo(peakX,horizon);ectx.stroke();ectx.setLineDash([]);
+    ectx.textAlign='center';ectx.fillStyle='#fff';ectx.font='bold 16px Jua,sans-serif';
+    ectx.fillText('한낮 해 높이 '+altDeg+'°',peakX,horizon-12);
+    // 달 (자기 시간에 떠서 짐, 위상 표시)
+    const moonRise=((sunrise+moonPhase)%1+1)%1, md=((dayT-moonRise)%1+1)%1;
+    if(md<0.5){const mf=md/0.5, mAlt=Math.sin(Math.PI*mf)*0.62;
+      const mx=W*(0.12+0.76*mf), my=horizon-mAlt*skyH;
+      ectx.globalAlpha=0.4+0.6*sa;ectx.save();
+      const gg=ectx.createRadialGradient(mx,my,0,mx,my,44);gg.addColorStop(0,'rgba(220,230,255,0.5)');gg.addColorStop(1,'rgba(220,230,255,0)');
+      ectx.fillStyle=gg;ectx.beginPath();ectx.arc(mx,my,44,0,TWO);ectx.fill();ectx.restore();
+      eMoon(mx,my,24,moonPhase);ectx.globalAlpha=1;}
+    // 해
+    if(sunElev>-0.04){const sx=W*(0.12+0.76*sunFrac), sy=horizon-sunElev*skyH;
+      const col=mixHex('#fff2a0','#ff7a2a',glow);
+      const gg=ectx.createRadialGradient(sx,sy,0,sx,sy,110);gg.addColorStop(0,'rgba(255,230,150,0.7)');gg.addColorStop(1,'rgba(255,200,90,0)');
+      ectx.fillStyle=gg;ectx.beginPath();ectx.arc(sx,sy,110,0,TWO);ectx.fill();
+      eDisk(sx,sy,34,[mixHex('#fffbe0','#fff2b0',glow),col]);}
+    // 땅 (계절별) — 밤엔 어둡게
+    const si=((Math.round(sea*4)%4)+4)%4;
+    const grndDay=['#5fb85f','#4fae3f','#c98a3a','#e8eef4'][si];
+    const grnd=mixHex(mixHex('#0e1c14',grndDay,0.25+0.75*dayF),'#000',0);
+    ectx.fillStyle=grnd;ectx.beginPath();ectx.moveTo(0,horizon);
+    ectx.bezierCurveTo(W*0.3,horizon-24,W*0.7,horizon+18,W,horizon-6);ectx.lineTo(W,H);ectx.lineTo(0,H);ectx.closePath();ectx.fill();
+    // 나무
+    const tx=W*0.80,ty=horizon+6;ectx.fillStyle=mixHex('#3a2a18','#7a5a34',dayF);ectx.fillRect(tx-8,ty-6,16,60);
+    const leaf=['#3fae3f','#2f9e2f','#d9782a','#dfe8ee'][si];
+    ectx.fillStyle=mixHex(mixHex('#0e2214',leaf,0.3+0.7*dayF),'#000',0);
+    ectx.beginPath();ectx.arc(tx,ty-14,42,0,TWO);ectx.fill();
+    // 집
+    const hx=W*0.16,hy=horizon+20;ectx.fillStyle=mixHex('#6a4a3a','#c9a07a',dayF);ectx.fillRect(hx-34,hy,68,54);
+    ectx.fillStyle=mixHex('#5a2a20','#c94a3a',dayF);ectx.beginPath();ectx.moveTo(hx-42,hy);ectx.lineTo(hx,hy-36);ectx.lineTo(hx+42,hy);ectx.closePath();ectx.fill();
+    ectx.fillStyle=sunUp?'#3a3a4a':'#ffd24a';ectx.fillRect(hx-10,hy+18,20,36);
+    // 🧒 관찰자 + 햇빛 각도 (고도 높으면 곧게=강함, 낮으면 비스듬히=약함)
+    const obsX=W*0.5,obsY=horizon+4;
+    if(sunUp){const sx2=W*(0.12+0.76*sunFrac),sy2=horizon-sunElev*skyH,dx=obsX-sx2,dy=obsY-sy2,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L;
+      ectx.strokeStyle='rgba(255,225,120,'+(0.3+0.5*Math.min(1,sunElev/0.95))+')';ectx.lineWidth=3;ectx.lineCap='round';
+      for(let k=-2;k<=2;k++){const gx=obsX+k*20;ectx.beginPath();ectx.moveTo(gx-ux*100,obsY-uy*100);ectx.lineTo(gx,obsY);ectx.stroke();}ectx.lineCap='butt';}
+    ectx.font='30px sans-serif';ectx.textAlign='center';ectx.fillText('🧒',obsX,obsY+2);
+    if(sunUp){ectx.fillStyle='#fff';ectx.font='15px Gaegu,sans-serif';
+      ectx.fillText(sunElev>0.6?'☀️ 햇빛이 곧게 비춰 따뜻해요!':(sunElev<0.3?'햇빛이 비스듬히 비춰 추워요':'햇빛이 알맞게 비춰요'),obsX,obsY+34);}
+    // 계절 장식
+    if(si===0){ectx.font='20px sans-serif';for(let i=0;i<7;i++)ectx.fillText('🌸',W*(0.30+i*0.06),horizon+40+Math.sin(i)*10);}
+    if(si===2){ectx.font='20px sans-serif';for(let i=0;i<7;i++)ectx.fillText('🍂',W*(0.30+i*0.06),horizon+42+Math.sin(i*2)*12);}
+    if(si===3){ectx.fillStyle='rgba(255,255,255,0.9)';for(let i=0;i<40;i++){const fx=(i*97+performance.now()*0.02)%W,fy=(i*53+performance.now()*0.03)%horizon;ectx.beginPath();ectx.arc(fx,fy,2,0,TWO);ectx.fill();}}
+    // ☀️→🌍 공전 + 자전축 다이어그램 (오른쪽 위): 축은 늘 같은 방향으로 기울어 있어요
+    const ox=W-118,oy=110,orx=72,ory=32;
+    ectx.strokeStyle='rgba(255,255,255,.28)';ectx.lineWidth=1.5;ectx.beginPath();ectx.ellipse(ox,oy,orx,ory,0,0,TWO);ectx.stroke();
+    ectx.strokeStyle='rgba(255,210,90,.35)';ectx.lineWidth=1;for(let r=0;r<8;r++){const a=r/8*TWO;ectx.beginPath();ectx.moveTo(ox+Math.cos(a)*14,oy+Math.sin(a)*14);ectx.lineTo(ox+Math.cos(a)*21,oy+Math.sin(a)*21);ectx.stroke();}
+    ectx.fillStyle='#ffd24a';ectx.beginPath();ectx.arc(ox,oy,12,0,TWO);ectx.fill();
+    for(let k=0;k<4;k++){const a=k/4*TWO-Math.PI/2,ex=ox+Math.cos(a)*orx,ey=oy+Math.sin(a)*ory,cur=k===si;
+      ectx.fillStyle=cur?'#4a90d8':'rgba(120,160,210,.5)';ectx.beginPath();ectx.arc(ex,ey,cur?9:5,0,TWO);ectx.fill();
+      const tl=0.41,Lax=cur?17:10;ectx.strokeStyle=cur?'#fff':'rgba(255,255,255,.45)';ectx.lineWidth=cur?2.5:1.2;
+      ectx.beginPath();ectx.moveTo(ex-Math.sin(tl)*Lax,ey-Math.cos(tl)*Lax);ectx.lineTo(ex+Math.sin(tl)*Lax,ey+Math.cos(tl)*Lax);ectx.stroke();}
+    ectx.fillStyle='#ffe6b0';ectx.font='bold 13px Jua,sans-serif';ectx.textAlign='center';
+    ectx.fillText(tilt>0.5?'축이 태양 쪽 → 해 높이!':(tilt<-0.5?'축이 반대쪽 → 해 낮게':'축이 옆으로'),ox,oy+ory+24);
+    // 텍스트 갱신
+    let part = !sunUp?'밤':(Math.abs(dayT-sunrise)<0.05?'아침':(Math.abs(dayT-sunset)<0.05?'저녁':'낮'));
+    document.getElementById('earthTitle').textContent=SZN_EMO[si]+' '+SZN_NAMES[si]+' · '+part;
+    document.getElementById('earthInfo').textContent=SZN_INFO[si];
+    if(si!==curSzn){curSzn=si;SZN_BTN.forEach((id,k)=>document.getElementById(id).classList.toggle('on',k===si));}
+  }
+  function earthLoop(ts){if(!earthActive)return;earthRAF=requestAnimationFrame(earthLoop);
+    const now=ts||performance.now();if(!eLast)eLast=now;let dt=(now-eLast)/1000;eLast=now;dt=Math.min(0.05,dt);
+    dayT=(dayT+dt/7)%1; if(seasonAuto)sea=(sea+dt/64)%1; moonPhase=(moonPhase+dt/48)%1;
+    drawEarthScene();}
+  function openEarth(){audio();sizeEarth();buildEStars();seasonAuto=true;eLast=0;curSzn=-1;earthActive=true;
+    earthEl.classList.add('show');earthLoop();speak('지구의 하루와 계절이에요. 해가 뜨고 지는 걸 볼 수 있어요');markSeen('지구');}
+  function closeEarth(){earthActive=false;cancelAnimationFrame(earthRAF);earthEl.classList.remove('show');if('speechSynthesis'in window)speechSynthesis.cancel();}
+  function setSeason(v){sea=v;seasonAuto=false;sfxClick();}
+  document.getElementById('eSpring').addEventListener('click',()=>setSeason(0.0));
+  document.getElementById('eSummer').addEventListener('click',()=>setSeason(0.25));
+  document.getElementById('eAutumn').addEventListener('click',()=>setSeason(0.5));
+  document.getElementById('eWinter').addEventListener('click',()=>setSeason(0.75));
+  document.getElementById('earthExit').addEventListener('click',()=>{closeEarth();sfxClick();});
+  addEventListener('resize',()=>{if(earthActive)sizeEarth();});
+
+  // ============ 🚀 우주선 착륙 & 행성 환경 체험 ============
+  const arrEl=document.getElementById('arrivalScene'),acv=document.getElementById('arrivalCanvas'),arctx=acv.getContext('2d');
+  const arrFactsEl=document.getElementById('arrFacts'),arrTitleEl=document.getElementById('arrTitle'),arrPhaseEl=document.getElementById('arrPhase');
+  let arrActive=false,arrRAF=0,arrT0=0,arrPhase='entry',arrBody=null,arrEnv=null,arrStars=[],arrFeat=[],arrSink=0,arrFromTour=false;
+  let arrHaze=[],arrSpark=[],arrJumpT=-1,arrShake=0;      // 아케이드 진입 연출용
+  const ENTRY_MS=3400;
+  const hexA=(h,a)=>{const n=parseInt(h.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;};
+  const easeIn=t=>t*t;
+  // 환경 데이터: g=지구 대비 중력, atmo=대기 두께(0~1), surf=단단한 지표, sun=해 크기(상대), big=하늘에 뜬 큰 천체
+  const ENV={
+    'Mercury':{sky:['#050507','#241c15'],grd:'#8a7f70',grd2:'#5f5749',feat:'crater',atmo:0.02,surf:true,g:0.38,sun:1.7,
+      temp:'낮 430°C / 밤 -170°C',air:'거의 없음',skyc:'낮에도 깜깜한 하늘 🌑',
+      danger:'공기가 <b>없어</b> 숨을 못 쉬고, 낮과 밤 온도가 롤러코스터처럼 바뀌어요. 우주복 없인 단 몇 초도 못 버텨요.',
+      wow:'공기가 없어 하늘이 낮에도 <b>깜깜</b>하고, 태양이 아주 <b>크고 밝게</b> 보여요.',
+      entry:'공기가 거의 없어 불꽃 없이 조용히 내려앉아요.'},
+    'Venus':{sky:['#e0a94a','#6e3f12'],grd:'#b5763a','grd2':'#7a4a1e',feat:'rock',atmo:1,surf:true,g:0.9,sun:0,
+      temp:'약 465°C(가장 뜨거움)',air:'두꺼운 이산화탄소',skyc:'누런 주황 하늘 · 해가 안 보임',
+      danger:'지구의 <b>90배</b> 공기가 짓누르고(바닷속 900m처럼!), <b>납도 녹는 열</b>에 <b>황산 비</b>까지. 태양계에서 가장 위험해요.',
+      wow:'구름이 너무 두꺼워 하늘에서 <b>해가 안 보여요</b>. 밤하늘에선 가장 밝은 샛별이랍니다.',
+      entry:'두꺼운 대기와 세게 부딪혀 <b>불덩이</b>처럼 뜨거워져요! 🔥'},
+    'Earth':{sky:['#7cb8f5','#d5ecff'],grd:'#3a8d3a','grd2':'#2b6bbf',feat:'ocean',atmo:0.6,surf:true,g:1,sun:1,
+      temp:'평균 15°C',air:'숨 쉴 수 있는 산소! 😊',skyc:'파란 하늘 · 흰 구름',
+      danger:'위험이 <b>없어요!</b> 우주복 없이 뛰어놀 수 있는, 우리가 아는 <b>유일한</b> 행성이에요.',
+      wow:'물과 공기와 <b>생명</b>이 있는 우리 집. 우주에서 보면 <b>파란 보석</b> 같아요. 💙',
+      entry:'적당한 공기에 부드럽게 진입해요. 유성처럼 반짝 타올라요.'},
+    'Mars':{sky:['#d8a57a','#c99a78'],grd:'#b5502f','grd2':'#7d3620',feat:'dune',atmo:0.15,surf:true,g:0.38,sun:0.62,
+      temp:'평균 -60°C',air:'아주 옅은 이산화탄소',skyc:'분홍빛 하늘(노을은 파랑!) 🌅',
+      danger:'공기가 아주 <b>옅어</b> 숨을 못 쉬고, <b>춥고</b>, 몇 주씩 부는 거대한 <b>먼지폭풍</b>과 강한 방사선이 있어요.',
+      wow:'가장 큰 화산 <b>올림푸스</b>는 에베레스트의 3배! 신기하게 <b>노을이 파랗게</b> 물들어요.',
+      entry:'공기가 옅어 살짝만 뜨거워지며 사뿐히 내려가요.'},
+    'Ceres':{sky:['#050507','#1c1a17'],grd:'#9a938a','grd2':'#6f695f',feat:'salt',atmo:0.02,surf:true,g:0.03,sun:0.34,
+      temp:'약 -105°C',air:'거의 없음',skyc:'검은 하늘',
+      danger:'공기가 <b>없고</b> 중력이 아주 <b>약해</b> 살짝만 뛰어도 붕 떠올라 우주로 날아갈 수 있어요.',
+      wow:'표면에 <b>하얀 소금 얼룩</b>이 반짝여요. 소행성대에서 가장 큰 천체랍니다.',
+      entry:'공기가 거의 없어 조용히 내려앉아요.'},
+    'Jupiter':{sky:['#caa06a','#6e4a28'],grd:'#c9a066','grd2':'#8a5a34',feat:'gas',atmo:1,surf:false,g:2.4,sun:0.18,spot:true,
+      temp:'구름 위 약 -110°C',air:'수소·헬륨 가스',skyc:'갈색·주황 줄무늬 구름 · 번개',
+      danger:'<b>딱딱한 땅이 없어요!</b> 계속 가라앉다 엄청난 압력에 으스러지고, 아주 강한 <b>방사선</b>까지 있어요.',
+      wow:'커다란 <b>대적점</b> 폭풍엔 지구가 통째로 들어가요! 몸무게도 지구의 2배가 넘어요.',
+      entry:'구름 속으로 빨려 들어가요. 바닥이 없어 계속 내려가요…'},
+    'Saturn':{sky:['#e6d3a0','#a98f52'],grd:'#d8bd82','grd2':'#a98f52',feat:'gas',atmo:1,surf:false,g:1.06,sun:0.1,rings:true,
+      temp:'구름 위 약 -140°C',air:'수소·헬륨 가스',skyc:'옅은 금빛 구름 · 머리 위 고리',
+      danger:'목성처럼 <b>땅이 없고</b>, 시속 1,800km <b>초강풍</b>이 몰아쳐요. 계속 가라앉기만 해요.',
+      wow:'머리 위로 거대한 <b>얼음 고리</b>가 하늘을 가로질러요. 토성은 물에 <b>둥둥</b> 뜰 만큼 가벼워요!',
+      entry:'금빛 구름 속으로 들어가요. 바닥이 없어 계속 내려가요…'},
+    'Uranus':{sky:['#9fe3ea','#357f88'],grd:'#9fe3ea','grd2':'#4f9ba4',feat:'gas',atmo:1,surf:false,g:0.9,sun:0.05,
+      temp:'약 -195°C',air:'수소·헬륨·메탄 가스',skyc:'청록빛 메탄 안개',
+      danger:'<b>땅이 없고</b> 메탄 얼음 안개에 <b>지독하게</b> 추워요. 옆으로 누워 돌아 하늘도 빙글빙글.',
+      wow:'메탄 가스 때문에 온통 <b>청록색</b> 세상! 옆으로 누워 있어 계절이 <b>42년</b>씩 이어져요.',
+      entry:'차가운 청록 안개 속으로 스며들어요…'},
+    'Neptune':{sky:['#3a5bd8','#0e1f52'],grd:'#3a5bd8','grd2':'#22347e',feat:'gas',atmo:1,surf:false,g:1.14,sun:0.033,
+      temp:'약 -200°C',air:'수소·헬륨·메탄 가스',skyc:'짙은 파란 세상 · 초음속 바람',
+      danger:'<b>땅이 없고</b>, 태양계에서 가장 빠른 <b>시속 2,100km 초음속 바람</b>이 불어요. 아주 캄캄하고 추워요.',
+      wow:'가장 깊은 <b>파란</b> 세상. 큰 <b>검은 점</b> 폭풍이 소용돌이쳐요.',
+      entry:'짙은 파란 구름 속으로 빨려 들어가요…'},
+    'Pluto':{sky:['#2a2740','#0a0812'],grd:'#c9b39a','grd2':'#8a6a4a',feat:'ice',atmo:0.12,surf:true,g:0.06,sun:0.02,
+      temp:'약 -230°C',air:'아주 옅은 질소',skyc:'어둑한 하늘 · 해가 밝은 별처럼',
+      danger:'너무 <b>추워서</b>(-230°C) 공기도 얼어붙고, 숨 쉴 공기가 거의 없어요. 해가 <b>밤별</b>처럼 작아요.',
+      wow:'<b>하트 모양</b> 질소 얼음 평원과 물로 된 <b>얼음 산</b>이 있어요. 짝꿍 카론이 하늘에 크게 떠 있어요.',
+      entry:'공기가 옅어 조용히 얼음 벌판에 내려앉아요.',big:{c:'#b8b0a4',n:'카론'}},
+    'Haumea':{sky:['#050510','#14121a'],grd:'#eef2f4','grd2':'#c2ccd4',feat:'ice',atmo:0.01,surf:true,g:0.045,sun:0.02,
+      temp:'약 -240°C',air:'없음',skyc:'검은 하늘',
+      danger:'공기가 <b>없고</b> 극한으로 <b>춥고</b>, 너무 빨리 돌아 어질어질해요.',
+      wow:'4시간에 한 바퀴 도는 통에 <b>럭비공</b>처럼 길쭉하고, 작은 <b>고리</b>도 있어요.',
+      entry:'공기가 없어 조용히 얼음에 내려앉아요.'},
+    'Makemake':{sky:['#100608','#20120e'],grd:'#b07a5a','grd2':'#7a4e36',feat:'ice',atmo:0.01,surf:true,g:0.05,sun:0.018,
+      temp:'약 -240°C',air:'없음',skyc:'검고 어두운 하늘',
+      danger:'공기가 <b>없고</b> 캄캄하고 몹시 <b>추운</b>, 아주 먼 얼음 세상이에요.',
+      wow:'표면이 <b>붉은 갈색</b>을 띠는 카이퍼 벨트의 얼음 왜소행성이에요.',
+      entry:'공기가 없어 조용히 내려앉아요.'},
+    'Eris':{sky:['#050508','#121218'],grd:'#dfe6ea','grd2':'#b2bcc4',feat:'ice',atmo:0.01,surf:true,g:0.084,sun:0.012,
+      temp:'약 -230°C',air:'없음',skyc:'거의 캄캄한 하늘',
+      danger:'태양이 아주 <b>멀어</b> 캄캄하고 <b>꽁꽁</b> 얼어붙은 세상이에요.',
+      wow:'가장 멀리서 발견된 왜소행성! 이 별 때문에 명왕성이 행성에서 빠졌어요.',
+      entry:'공기가 없어 조용히 내려앉아요.'},
+    // ---- 대표 위성 ----
+    '달':{sky:['#000006','#15130f'],grd:'#b6b0a6','grd2':'#847d70',feat:'crater',atmo:0,surf:true,g:0.166,sun:1,
+      temp:'낮 120°C / 밤 -170°C',air:'없음',skyc:'검은 하늘에 파란 지구!',
+      danger:'공기가 <b>없어</b> 숨을 못 쉬지만, 사람이 <b>다녀온 유일한</b> 곳이에요.',
+      wow:'하늘에 <b>파란 지구</b>가 둥실 떠 있어요. 중력이 약해 <b>겅중겅중</b> 뛸 수 있어요!',
+      entry:'공기가 없어 불꽃 없이 사뿐히 내려앉아요.',big:{c:'#2b6bbf',n:'지구'}},
+    '타이탄':{sky:['#e0a94a','#7a5220'],grd:'#caa14a','grd2':'#6e4a1e',feat:'lake',atmo:0.9,surf:true,g:0.14,sun:0.1,
+      temp:'약 -180°C',air:'두꺼운 질소·메탄',skyc:'주황빛 안개 하늘',
+      danger:'아주 <b>춥고</b>, 공기는 두껍지만 질소·메탄이라 <b>숨은 못 쉬어요</b>.',
+      wow:'공기가 두껍고 중력이 약해 팔에 날개를 달면 <b>날 수 있대요!</b> <b>메탄 호수</b>와 메탄 비도 있어요.',
+      entry:'두꺼운 주황 안개 속을 천천히 내려가요.',big:{c:'#d8bd82',n:'토성',ring:true}},
+    '유로파':{sky:['#050510','#14161c'],grd:'#e8eef2','grd2':'#b9c6d2',feat:'ice',atmo:0.02,surf:true,g:0.134,sun:0.18,
+      temp:'약 -160°C',air:'거의 없음',skyc:'검은 하늘에 커다란 목성!',
+      danger:'얼음이 쩍쩍 갈라진 <b>추운</b> 세상이고, 목성의 강한 <b>방사선</b>이 쏟아져요.',
+      wow:'얼음 껍질 <b>아래 바다</b>에 생명이 살고 있을지도 몰라요! 하늘엔 목성이 크게 떠요.',
+      entry:'공기가 거의 없어 조용히 얼음 위로 내려앉아요.',big:{c:'#c9a066',n:'목성',banded:true}},
+    '이오':{sky:['#0a0508','#20140a'],grd:'#e8d24a','grd2':'#a88a2a',feat:'volcano',atmo:0.03,surf:true,g:0.183,sun:0.18,
+      temp:'약 -140°C(용암은 뜨거움!)',air:'옅은 유황 가스',skyc:'노란 하늘에 커다란 목성',
+      danger:'화산이 <b>400개 넘게</b> 터지고 <b>유황</b> 연기가 가득해요. 발밑이 부글부글!',
+      wow:'태양계에서 <b>화산이 가장 많은</b> 곳! 유황 때문에 온통 <b>노랗답니다</b>.',
+      entry:'옅은 공기 속, 터지는 화산들을 지나 내려가요.',big:{c:'#c9a066',n:'목성',banded:true}},
+  };
+  function sizeArr(){acv.width=innerWidth;acv.height=innerHeight;}
+  function envFor(p){const key=p.en||p.ko;if(ENV[key])return ENV[key];
+    const style=p.style||'rock',feat=style==='ice'?'ice':style==='volcano'?'volcano':style==='haze'?'lake':'crater';
+    return {sky:['#000008','#12100e'],grd:style==='ice'?'#cdd6dd':'#7a7266',grd2:style==='ice'?'#a9b6c2':'#5c5548',
+      feat,atmo:0.02,surf:true,g:0.08,sun:0.4,temp:'아주 추움(약 -180°C)',air:'거의 없음',skyc:'검은 하늘',
+      danger:'공기가 <b>없어</b> 숨을 못 쉬고, 몹시 <b>추운</b> 세상이에요.',
+      wow:'작고 조용한 얼음·바위 세상이에요.',entry:'공기가 거의 없어 조용히 내려앉아요.'};}
+  function openArrival(p){if(!p)return;audio();arrBody=p;arrEnv=envFor(p);sizeArr();
+    arrStars=Array.from({length:90},()=>({x:Math.random(),y:Math.random()*0.66,r:Math.random()*1.4+0.3}));
+    arrFeat=Array.from({length:14},()=>({x:Math.random(),s:Math.random()*0.5+0.5,o:Math.random()}));
+    arrHaze=Array.from({length:46},()=>({x:Math.random(),y:Math.random(),len:0.05+Math.random()*0.16,sp:0.6+Math.random()*1.2,w:1+Math.random()*3}));
+    arrSpark=[];arrJumpT=-1;arrShake=0;
+    arrPhase='entry';arrT0=0;arrSink=0;arrActive=true;arrFactsEl.classList.remove('show');arrFactsEl.innerHTML='';
+    try{arrImg(ARRBG[p.en||p.ko]);}catch(e){}   // 실제 배경 미리 로드
+    arrTitleEl.textContent=(p.emoji||'🚀')+' '+p.ko+' 도착!';
+    arrFromTour=tourActive;document.getElementById('arrTravel').style.display=arrFromTour?'inline-block':'none';
+    arrEl.classList.add('show');closeCard();sfxWhoosh();
+    speak(p.ko+'에 도착했어요');try{markSeen(p.ko);}catch(e){}arrLoop();}
+  function closeArrival(){arrActive=false;cancelAnimationFrame(arrRAF);arrEl.classList.remove('show');
+    if('speechSynthesis'in window)speechSynthesis.cancel();}
+  function showArrFacts(){const e=arrEnv,wt=Math.max(1,Math.round(20*e.g));
+    arrFactsEl.innerHTML=`<div class="arow">`+
+      `<div class="af"><div class="k">온도</div><div class="v">${e.temp}</div></div>`+
+      `<div class="af"><div class="k">공기</div><div class="v">${e.air}</div></div>`+
+      `<div class="af"><div class="k">몸무게(20kg면)</div><div class="v">${wt}kg</div></div>`+
+      `</div><div class="danger">⚠️ ${e.danger}</div><div class="awow">✨ ${e.wow}</div>`;
+    arrFactsEl.classList.add('show');}
+  function arrLoop(ts){if(!arrActive)return;arrRAF=requestAnimationFrame(arrLoop);
+    const now=ts||performance.now();if(!arrT0)arrT0=now;const el=now-arrT0;
+    if(arrPhase==='entry'){const pe=Math.min(1,el/ENTRY_MS);
+      let ph;if(pe<0.18)ph='🛰️ 궤도 진입 중…';
+      else if(pe<0.8)ph=(arrEnv.atmo>0.25?'🔥 대기권 돌파! 뿌연 구름을 뚫고… ':'🛬 조용히 하강 중… ')+(arrEnv.atmo>0.5?'우주선이 과열돼요!':'');
+      else ph=arrEnv.surf?'🪂 곧 착륙!':'☁️ 구름 속으로…';
+      arrPhaseEl.textContent=ph;
+      arrShake=(arrEnv.atmo>0.25)?Math.sin(pe*Math.PI)*arrEnv.atmo*6:0;   // 과열 구간 흔들림
+      if(el>=ENTRY_MS){arrPhase='surface';arrShake=0;arrPhaseEl.textContent=arrEnv.skyc;showArrFacts();
+        if(arrEnv.surf)puffDust();sfxWhoosh();
+        speak(arrBody.ko+'. '+arrEnv.danger.replace(/<[^>]+>/g,''));}}
+    drawArrival(el);}
+  function puffDust(){const W=acv.width,H=acv.height,gy=H*0.72;   // 착륙 먼지
+    for(let i=0;i<26;i++)arrSpark.push({x:W*0.5+(Math.random()-0.5)*W*0.12,y:gy-H*0.02,vx:(Math.random()-0.5)*4,vy:-Math.random()*3-0.5,life:1,dust:true});}
+  // 실제 NASA 사진 착륙 배경(있는 천체) — 없으면 절차적으로 그림
+  const ARRBG={Mercury:'arr_mercury',Venus:'arr_venus',Mars:'arr_mars',Jupiter:'arr_jupiter',Saturn:'arr_saturn',
+    Uranus:'arr_uranus',Neptune:'arr_neptune',Pluto:'arr_pluto','달':'arr_moon','타이탄':'arr_titan','이오':'arr_io'};
+  const arrImgCache={};
+  function arrImg(key){if(!key||typeof TEX==='undefined'||!TEX[key])return null;let im=arrImgCache[key];
+    if(!im){im=new Image();im.src=TEX[key];arrImgCache[key]=im;}return(im.complete&&im.naturalWidth)?im:null;}
+  function drawCover(g,im,W,H){const ir=im.naturalWidth/im.naturalHeight,cr=W/H;let dw,dh;
+    if(ir>cr){dh=H;dw=H*ir;}else{dw=W;dh=W/ir;}g.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);}
+  function drawArrival(el){const W=acv.width,H=acv.height,e=arrEnv,g=arctx;
+    const pe=Math.min(1,el/ENTRY_MS);
+    g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,W,H);g.save();
+    if(arrShake)g.translate((Math.random()-0.5)*arrShake,(Math.random()-0.5)*arrShake);
+    const bg=arrImg(ARRBG[arrBody.en||arrBody.ko]);
+    if(bg){drawCover(g,bg,W,H);                                  // NASA 사진 → 아케이드 톤 처리
+      g.fillStyle=hexA(e.sky[0],0.30);g.fillRect(0,0,W,H);       // 하늘색 워시(만화 느낌)
+      const vg=g.createRadialGradient(W*0.5,H*0.46,H*0.18,W*0.5,H*0.6,H*0.9);
+      vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(10,6,20,0.5)');g.fillStyle=vg;g.fillRect(0,0,W,H);}
+    else{const sky=g.createLinearGradient(0,0,0,H);sky.addColorStop(0,e.sky[0]);sky.addColorStop(1,e.sky[1]);
+      g.fillStyle=sky;g.fillRect(0,0,W,H);
+      if(e.atmo<0.2){g.fillStyle='#fff';arrStars.forEach(s=>{g.globalAlpha=0.4+0.5*s.r/1.7;g.beginPath();g.arc(s.x*W,s.y*H,s.r,0,TWO);g.fill();});g.globalAlpha=1;}
+      if(e.big)drawBigWorld(g,W,H,e.big);
+      if(e.sun){const sr=Math.max(3,e.sun*44*(W/1200+0.4)),sx=W*0.8,sy=H*0.2;
+        const sg=g.createRadialGradient(sx,sy,0,sx,sy,sr*2.6);sg.addColorStop(0,'#fff7e0');sg.addColorStop(0.4,'#ffd98a');sg.addColorStop(1,'rgba(255,200,120,0)');
+        g.fillStyle=sg;g.beginPath();g.arc(sx,sy,sr*2.6,0,TWO);g.fill();g.fillStyle='#fff6d8';g.beginPath();g.arc(sx,sy,sr,0,TWO);g.fill();}
+      if(e.surf)drawGround(g,W,H,H*0.72,e);else drawGasBands(g,W,H,e,el);}
+    // 사진 배경 위 만화 태양(표면 단계) — 아케이드 포인트
+    if(bg&&arrPhase==='surface'&&e.sun>0.06){const sx=W*0.83,sy=H*0.17,sr=Math.max(9,W*0.028);
+      const sg=g.createRadialGradient(sx,sy,0,sx,sy,sr*2.6);sg.addColorStop(0,'#fff8dc');sg.addColorStop(0.5,'rgba(255,224,150,.6)');sg.addColorStop(1,'rgba(255,224,150,0)');
+      g.fillStyle=sg;g.beginPath();g.arc(sx,sy,sr*2.6,0,TWO);g.fill();g.fillStyle='#fff3c8';g.beginPath();g.arc(sx,sy,sr,0,TWO);g.fill();}
+    // 진입 연출: 뿌연 구름 streak + 과열 플래시
+    if(arrPhase==='entry'&&e.atmo>0.15)drawHaze(g,W,H,pe,e,el);
+    // 우주선
+    const groundY=H*0.72,cx=W*0.5,topY=-H*0.12,landY=e.surf?groundY-H*0.015:H*0.5;
+    let cy;if(arrPhase==='entry')cy=topY+(landY-topY)*easeIn(pe);
+    else{cy=landY;if(!e.surf){arrSink+=0.4;cy=landY+arrSink;if(cy>H+40){arrSink=0;cy=landY;}}}
+    if(arrPhase==='entry'&&e.atmo>0.25)drawHeat(g,cx,cy,pe,W);
+    drawCraft(g,cx,cy,arrPhase==='entry'||!e.surf);
+    // 표면 탐험: 우주인 + 반짝이
+    if(arrPhase==='surface'&&e.surf)drawAstro(g,W,H,groundY,e,el);
+    updateSparks(g);
+    if(arrPhase==='entry')drawGauges(g,W,H,pe,e);
+    if(!e.surf&&arrPhase==='surface'){g.fillStyle='rgba(255,255,255,.95)';g.textAlign='center';g.shadowColor='rgba(0,0,0,.85)';g.shadowBlur=10;
+      g.font=`bold ${Math.round(Math.max(16,W*0.02))}px Jua, sans-serif`;g.fillText('땅이 없어요! 계속 가라앉아요…',cx,H*0.34);g.shadowBlur=0;}
+    if(arrPhase==='surface'&&e.surf){g.fillStyle='rgba(255,255,255,.9)';g.textAlign='center';g.font=`${Math.round(Math.max(13,W*0.015))}px Gaegu,sans-serif`;
+      g.shadowColor='rgba(0,0,0,.8)';g.shadowBlur=6;g.fillText('👆 화면을 톡! 우주인이 겅중 뛰어요',W*0.5,H*0.965);g.shadowBlur=0;}
+    g.restore();}
+  function drawHaze(g,W,H,pe,e,el){const inten=Math.sin(pe*Math.PI);if(inten<=0)return;   // 중간 절정
+    g.save();g.globalAlpha=Math.min(0.85,inten*e.atmo);
+    const warm=e.atmo>0.5&&pe<0.65;
+    arrHaze.forEach(s=>{const y=(s.y+el*0.001*s.sp)%1,py=y*H,px=s.x*W,ln=s.len*H;
+      g.strokeStyle=(warm?'rgba(255,205,140,':'rgba(240,246,255,')+(0.5*inten)+')';g.lineWidth=s.w;
+      g.beginPath();g.moveTo(px,py);g.lineTo(px+(s.x-0.5)*26,py+ln);g.stroke();});
+    g.globalAlpha=inten*e.atmo*0.3;g.fillStyle=warm?'#f3e3c8':'#e8f0ff';   // 뿌연 구름 덩어리
+    for(let i=0;i<5;i++){const cxp=((i*0.23+el*0.0004)%1)*W,cyp=((i*0.37+el*0.0011)%1)*H;
+      g.beginPath();g.ellipse(cxp,cyp,W*0.15,H*0.05,0,0,TWO);g.fill();}
+    g.restore();
+    if(e.atmo>0.5&&pe>0.38&&pe<0.86){g.fillStyle='rgba(255,120,50,'+(0.13*inten)+')';g.fillRect(0,0,W,H);}}
+  function drawGauges(g,W,H,pe,e){g.save();g.textAlign='left';const pad=Math.max(12,W*0.02),bw=Math.max(74,W*0.09),bh=Math.max(8,H*0.014);
+    const ay=pad+26;g.font=`${Math.max(12,W*0.014)}px Jua,sans-serif`;
+    g.fillStyle='rgba(0,0,0,.4)';g.fillRect(pad,ay,bw,bh);g.fillStyle='#7fd0ff';g.fillRect(pad,ay,bw*(1-pe),bh);
+    g.fillStyle='#eaf2ff';g.fillText('🛰️ 고도',pad,ay-6);
+    if(e.atmo>0.15){const ty=ay+30,heat=Math.sin(pe*Math.PI)*e.atmo;
+      g.fillStyle='rgba(0,0,0,.4)';g.fillRect(pad,ty,bw,bh);g.fillStyle=heat>0.6?'#ff5a3a':'#ffb04a';g.fillRect(pad,ty,bw*Math.min(1,heat*0.8+pe*0.3),bh);
+      g.fillStyle='#eaf2ff';g.fillText('🔥 온도',pad,ty-6);}
+    g.restore();}
+  function drawAstro(g,W,H,gy,e,el){const s=Math.max(15,W*0.019),ax=W*0.63,base=gy-s*0.15;
+    const jumpH=Math.min(H*0.4,s*(2+(0.166/Math.max(0.03,e.g))*2.4));   // 중력 약할수록 높이 점프
+    let yoff;
+    if(arrJumpT>=0){const dur=650+ (1/Math.max(0.05,e.g))*140,jt=(el-arrJumpT)/dur;
+      if(jt>=1)arrJumpT=-1;yoff=jt>=1?0:-Math.sin(jt*Math.PI)*jumpH;}
+    else yoff=-Math.abs(Math.sin(el*0.002))*s*0.35;
+    const ay=base+yoff;
+    g.fillStyle='rgba(0,0,0,.26)';g.beginPath();g.ellipse(ax,base+s*0.12,s*0.55,s*0.15,0,0,TWO);g.fill();
+    g.strokeStyle='#dfe7ee';g.lineWidth=s*0.2;g.beginPath();g.moveTo(ax-s*0.18,ay+s*0.25);g.lineTo(ax-s*0.24,ay+s*0.58);g.moveTo(ax+s*0.18,ay+s*0.25);g.lineTo(ax+s*0.24,ay+s*0.58);g.stroke();
+    g.fillStyle='#eef3f8';g.strokeStyle='#b7c2cd';g.lineWidth=2;g.beginPath();
+    if(g.roundRect)g.roundRect(ax-s*0.5,ay-s*0.85,s,s*1.15,s*0.28);else g.rect(ax-s*0.5,ay-s*0.85,s,s*1.15);
+    g.fill();g.stroke();
+    g.beginPath();g.arc(ax,ay-s*0.95,s*0.5,0,TWO);g.fillStyle='#f4f8fc';g.fill();g.stroke();
+    g.fillStyle='#26344d';g.beginPath();g.arc(ax,ay-s*0.95,s*0.34,0,TWO);g.fill();
+    g.fillStyle='rgba(170,215,255,.75)';g.beginPath();g.arc(ax-s*0.1,ay-s*1.06,s*0.12,0,TWO);g.fill();}
+  function updateSparks(g){if(!arrSpark.length)return;for(let i=arrSpark.length-1;i>=0;i--){const p=arrSpark[i];
+    p.x+=p.vx;p.y+=p.vy;p.vy+=p.dust?0.12:0.05;p.life-=0.02;
+    if(p.life<=0){arrSpark.splice(i,1);continue;}
+    g.globalAlpha=Math.max(0,p.life);g.fillStyle=p.dust?'rgba(205,185,155,0.8)':'#fff2a0';
+    g.beginPath();g.arc(p.x,p.y,p.dust?3:2.2,0,TWO);g.fill();}g.globalAlpha=1;}
+  function drawBigWorld(g,W,H,b){const bx=W*0.22,by=H*0.24,br=W*0.085;
+    g.save();g.beginPath();g.arc(bx,by,br,0,TWO);g.clip();g.fillStyle=b.c;g.fillRect(bx-br,by-br,br*2,br*2);
+    if(b.banded)for(let i=0;i<6;i++){g.fillStyle=i%2?'#b5834a':'#dcb87a';g.globalAlpha=.6;g.fillRect(bx-br,by-br+i*br*0.34,br*2,br*0.34);}
+    g.globalAlpha=1;g.fillStyle='rgba(0,0,0,.28)';g.fillRect(bx+br*0.3,by-br,br*0.9,br*2);g.restore();
+    if(b.ring){g.strokeStyle='rgba(230,211,160,.7)';g.lineWidth=Math.max(3,br*0.14);g.beginPath();g.ellipse(bx,by,br*1.7,br*0.5,-0.4,0,TWO);g.stroke();}
+    g.strokeStyle='rgba(255,255,255,.25)';g.lineWidth=2;g.beginPath();g.arc(bx,by,br,0,TWO);g.stroke();
+    g.fillStyle='rgba(255,255,255,.85)';g.textAlign='center';g.font=`${Math.round(Math.max(12,W*0.013))}px Gaegu, sans-serif`;g.fillText(b.n,bx,by+br+18);}
+  function drawGround(g,W,H,gy,e){const gh=H-gy;g.fillStyle=e.grd;g.fillRect(0,gy,W,gh);
+    if(e.feat==='crater'||e.feat==='salt'){arrFeat.forEach(f=>{const ex=f.x*W,ey=gy+gh*(0.15+f.o*0.7),rr=8+f.s*42;
+        g.fillStyle=e.grd2;g.beginPath();g.ellipse(ex,ey,rr,rr*0.42,0,0,TWO);g.fill();
+        g.fillStyle='rgba(255,255,255,.08)';g.beginPath();g.ellipse(ex,ey-rr*0.12,rr*0.8,rr*0.28,0,0,TWO);g.fill();});
+      if(e.feat==='salt')arrFeat.forEach(f=>{if(f.o<0.55)return;g.fillStyle='rgba(255,255,255,.85)';g.beginPath();g.arc(f.x*W,gy+gh*(0.2+f.s*0.6),3+f.s*5,0,TWO);g.fill();});
+    }else if(e.feat==='dune'){for(let k=2;k>=0;k--){g.fillStyle=k?e.grd2:e.grd;g.globalAlpha=k?0.55:1;g.beginPath();g.moveTo(0,H);
+        for(let x=0;x<=W;x+=18)g.lineTo(x,gy+gh*0.12+Math.sin(x*0.008+k*1.6)*gh*0.07+gh*0.09*k);g.lineTo(W,H);g.closePath();g.fill();}g.globalAlpha=1;
+      arrFeat.slice(0,3).forEach(f=>{g.fillStyle='rgba(180,110,70,.22)';g.beginPath();g.ellipse(f.x*W,gy-gh*0.12,6+f.s*8,gh*0.32,0,0,TWO);g.fill();});
+    }else if(e.feat==='ice'){g.strokeStyle=e.grd2;g.lineWidth=2;arrFeat.forEach(f=>{let x=f.x*W,y=gy+gh*0.15;g.beginPath();g.moveTo(x,y);
+        for(let s=0;s<4;s++){x+=(f.o-0.5)*44;y+=gh*0.2;g.lineTo(x,y);}g.stroke();});
+      g.fillStyle='rgba(255,255,255,.14)';g.fillRect(0,gy,W,gh*0.22);
+    }else if(e.feat==='volcano'){[0.24,0.55,0.82].forEach((vx,i)=>{const bx=vx*W,bw=W*0.15,vh=gh*(0.65+i*0.12);
+        g.fillStyle=e.grd2;g.beginPath();g.moveTo(bx-bw,H);g.lineTo(bx,gy+gh-vh);g.lineTo(bx+bw,H);g.closePath();g.fill();
+        const lg=g.createRadialGradient(bx,gy+gh-vh,0,bx,gy+gh-vh,bw*0.7);lg.addColorStop(0,'rgba(255,130,50,.95)');lg.addColorStop(1,'rgba(255,60,20,0)');
+        g.fillStyle=lg;g.beginPath();g.arc(bx,gy+gh-vh,bw*0.7,0,TWO);g.fill();
+        g.fillStyle='rgba(120,110,100,.32)';g.beginPath();g.ellipse(bx,gy+gh-vh-42,bw*0.4,bw*0.75,0,0,TWO);g.fill();});
+    }else if(e.feat==='lake'){arrFeat.forEach(f=>{if(f.o<0.4)return;g.fillStyle='rgba(28,22,16,.72)';g.beginPath();g.ellipse(f.x*W,gy+gh*(0.4+f.s*0.4),40+f.s*70,gh*0.09,0,0,TWO);g.fill();
+        g.fillStyle='rgba(255,220,150,.10)';g.beginPath();g.ellipse(f.x*W,gy+gh*(0.4+f.s*0.4),28+f.s*48,gh*0.04,0,0,TWO);g.fill();});
+    }else if(e.feat==='ocean'){const wg=g.createLinearGradient(0,gy,0,H);wg.addColorStop(0,'#3f8fd8');wg.addColorStop(1,'#1a4f8a');g.fillStyle=wg;g.fillRect(0,gy,W,gh);
+      g.fillStyle=e.grd;g.beginPath();g.moveTo(W*0.08,H);g.quadraticCurveTo(W*0.3,gy+gh*0.05,W*0.55,gy+gh*0.28);g.quadraticCurveTo(W*0.72,gy+gh*0.5,W*0.92,H);g.closePath();g.fill();
+      g.fillStyle='rgba(255,255,255,.22)';g.beginPath();g.ellipse(W*0.8,gy+gh*0.28,W*0.05,gh*0.05,0,0,TWO);g.fill();
+    }else{g.fillStyle=e.grd2;g.fillRect(0,gy+gh*0.5,W,gh*0.5);}
+    if(e.atmo>0.7){const hz=g.createLinearGradient(0,0,0,H);hz.addColorStop(0,hexA(e.sky[0],0.55));hz.addColorStop(0.6,hexA(e.sky[0],0.18));hz.addColorStop(1,hexA(e.sky[1],0.05));g.fillStyle=hz;g.fillRect(0,0,W,H);}}
+  function drawGasBands(g,W,H,e,el){const n=9;for(let i=0;i<n;i++){const y0=H*i/n,wob=Math.sin(el*0.0012+i)*10;
+      g.fillStyle=i%2?e.grd:e.grd2;g.globalAlpha=0.4;g.fillRect(-10,y0+wob,W+20,H/n+3);}g.globalAlpha=1;
+    if(e.spot){g.fillStyle='#bd4128';g.beginPath();g.ellipse(W*0.3,H*0.6,W*0.09,H*0.06,0,0,TWO);g.fill();
+      g.fillStyle='#e08a5a';g.beginPath();g.ellipse(W*0.3,H*0.6,W*0.05,H*0.03,0,0,TWO);g.fill();
+      if(Math.random()<0.025){g.fillStyle='rgba(255,255,255,.45)';g.fillRect(0,0,W,H);}}
+    if(e.rings){g.strokeStyle='rgba(230,211,160,.5)';for(let k=0;k<3;k++){g.lineWidth=Math.max(6,H*0.02);
+      g.beginPath();g.ellipse(W*0.5,-H*0.12,W*(0.5+k*0.14),H*(0.16+k*0.05),0,0,Math.PI);g.stroke();}}}
+  function drawHeat(g,x,y,pe,W){const inten=Math.sin(pe*Math.PI);if(inten<=0)return;const R=W*0.1*(0.6+pe);
+    const gl=g.createRadialGradient(x,y+R*0.3,0,x,y+R*0.3,R);gl.addColorStop(0,`rgba(255,240,200,${0.85*inten})`);
+    gl.addColorStop(0.4,`rgba(255,140,60,${0.6*inten})`);gl.addColorStop(1,'rgba(255,80,40,0)');
+    g.fillStyle=gl;g.beginPath();g.arc(x,y+R*0.3,R,0,TWO);g.fill();}
+  function drawCraft(g,x,y,flame){const s=Math.max(14,acv.width*0.016);
+    if(flame){const fl=g.createLinearGradient(x,y+s*0.6,x,y+s*2.4);fl.addColorStop(0,'#ffe37a');fl.addColorStop(0.5,'#ff9e3a');fl.addColorStop(1,'rgba(255,80,40,0)');
+      g.fillStyle=fl;g.beginPath();g.moveTo(x-s*0.5,y+s*0.6);g.lineTo(x+s*0.5,y+s*0.6);g.lineTo(x,y+s*(1.8+Math.random()*0.7));g.closePath();g.fill();}
+    g.fillStyle='#e2e8ef';g.strokeStyle='#93a0ad';g.lineWidth=2;
+    g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s*0.62,y+s*0.6);g.lineTo(x-s*0.62,y+s*0.6);g.closePath();g.fill();g.stroke();
+    g.fillStyle='#5db8f5';g.beginPath();g.arc(x,y-s*0.05,s*0.26,0,TWO);g.fill();
+    g.strokeStyle='#93a0ad';g.beginPath();g.moveTo(x-s*0.5,y+s*0.5);g.lineTo(x-s*0.82,y+s*1.0);g.moveTo(x+s*0.5,y+s*0.5);g.lineTo(x+s*0.82,y+s*1.0);g.stroke();}
+  function arrNextBody(){const i=PLANETS.indexOf(arrBody);openArrival(PLANETS[i<0?0:(i+1)%PLANETS.length]);}
+  document.getElementById('arriveBtn').addEventListener('click',()=>{if(cardData)openArrival(cardData);});
+  document.getElementById('arrReplay').addEventListener('click',()=>{arrPhase='entry';arrT0=0;arrSink=0;arrFactsEl.classList.remove('show');sfxWhoosh();});
+  document.getElementById('arrNext').addEventListener('click',()=>{sfxClick();arrNextBody();});
+  document.getElementById('arrTravel').addEventListener('click',()=>{sfxClick();closeArrival();
+    if(tourActive){tourPaused=false;gameTarget=null;gameArrived=true;showPicker();}});
+  document.getElementById('arrExit').addEventListener('click',()=>{const fromTour=arrFromTour;closeArrival();sfxClick();
+    if(fromTour&&tourActive){tourPaused=false;gameTarget=null;gameArrived=true;showPicker();}});
+  acv.addEventListener('pointerdown',()=>{if(arrActive&&arrPhase==='surface'&&arrEnv&&arrEnv.surf&&arrJumpT<0){
+    arrJumpT=performance.now()-arrT0;sfxClick();
+    for(let i=0;i<10;i++)arrSpark.push({x:acv.width*0.63,y:acv.height*0.7,vx:(Math.random()-0.5)*4,vy:-Math.random()*4-1,life:1});
+    if(arrEnv.g<0.2)speak('와! 중력이 약해서 높이 떠올라요');}});
+  addEventListener('resize',()=>{if(arrActive)sizeArr();});
+
+  // ----- 특별 메뉴 -----
+  const specialSheet=document.getElementById('specialSheet');
+  function showSheet(el){audio();el.classList.add('show');sfxClick();}
+  function hideSheet(el){el.classList.remove('show');}
+  document.getElementById('specialBtn').addEventListener('click',()=>showSheet(specialSheet));
+  document.getElementById('specialClose').addEventListener('click',()=>hideSheet(specialSheet));
+  document.getElementById('dexClose').addEventListener('click',()=>hideSheet(dexSheet));
+  document.getElementById('creatorClose').addEventListener('click',()=>hideSheet(creatorSheet));
+  [specialSheet,dexSheet,creatorSheet].forEach(s=>s.addEventListener('click',e=>{if(e.target===s)hideSheet(s);}));
+  document.getElementById('openJourney').addEventListener('click',()=>{hideSheet(specialSheet);openCosmic(0);});
+  document.getElementById('openBlackhole').addEventListener('click',()=>{hideSheet(specialSheet);openCosmic(JOURNEY.length-1);});
+  document.getElementById('openCreator').addEventListener('click',()=>{hideSheet(specialSheet);openCreator();});
+  document.getElementById('openDex').addEventListener('click',()=>{hideSheet(specialSheet);renderDex();showSheet(dexSheet);});
+  document.getElementById('openEarth').addEventListener('click',()=>{hideSheet(specialSheet);openEarth();});
+
+  sizeFx();applyMode(false);setTimeout(()=>document.getElementById('load').classList.add('gone'),500);animate();
+}
+</script>
+</body>
+</html>
