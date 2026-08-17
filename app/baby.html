@@ -169,6 +169,12 @@
   .launch{margin-top:14px;font-family:'Jua';font-size:20px;color:#08303a;border:none;border-radius:18px;padding:13px 26px;cursor:pointer;
     background:linear-gradient(180deg,#a9f0ff,#7ee8fa);box-shadow:0 5px 0 #3fa9bd;}
   .launch:active{transform:translateY(4px);box-shadow:0 1px 0 #3fa9bd;}
+  .cpreview{transition:transform .18s,width .18s,height .18s;}
+  .stepper{display:flex;gap:14px;justify-content:center;align-items:center;}
+  .stepper button{font-size:20px;line-height:1;border:none;border-radius:50%;width:46px;height:46px;cursor:pointer;
+    background:linear-gradient(180deg,#e9dcff,#c9b3ff);box-shadow:0 4px 0 #8a6fc9;}
+  .stepper button:active{transform:translateY(3px);box-shadow:0 1px 0 #8a6fc9;}
+  .stepper .num{font-family:'Jua';font-size:22px;color:#fff;min-width:62px;}
 
   /* 우주 크기 여행 & 블랙홀 (캔버스 씬) */
   #cosmic,#earthScene,#arrivalScene{position:absolute;inset:0;z-index:45;background:#03010a;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .35s;}
@@ -382,7 +388,13 @@
       <div class="cpreview" id="cPreview"></div>
       <div class="crow"><div class="lbl">🎨 색깔</div><div class="swatches" id="cSwatches"></div></div>
       <div class="crow"><div class="lbl">📏 크기</div><div class="pick" id="cSize"></div></div>
+      <div class="crow"><div class="lbl">🎏 무늬</div><div class="pick" id="cPattern"></div></div>
+      <div class="crow"><div class="lbl">🔴 커다란 폭풍(대적점)</div><div class="pick" id="cSpot"></div></div>
       <div class="crow"><div class="lbl">💍 고리</div><div class="pick" id="cRing"></div></div>
+      <div class="crow"><div class="lbl">🌙 달 (최대 10개)</div>
+        <div class="stepper"><button id="cMoonMinus">➖</button><span class="num" id="cMoonNum">1개</span><button id="cMoonPlus">➕</button></div></div>
+      <div class="crow"><div class="lbl">🧭 자전축 기울기</div><div class="pick" id="cTilt"></div></div>
+      <div class="crow"><div class="lbl">🌀 공전 속도</div><div class="pick" id="cSpeed"></div></div>
       <div class="crow"><div class="lbl">✏️ 이름</div><input class="cname" id="cName2" maxlength="6" value="반짝이"></div>
       <button class="launch" id="cLaunch">🚀 발사!</button>
     </div>
@@ -1580,31 +1592,68 @@ function start(){
       return '<div class="dexcell'+(has?'':' locked')+'"><div class="ic">'+(has?it.emoji:'❓')+'</div><div class="nm">'+(has?it.ko:'???')+'</div></div>';}).join('');}
 
   // ----- 내 행성 만들기 -----
-  function customTexture(color){const w=256,h=128,c=cvns(w,h),x=c.getContext('2d');x.fillStyle=color;x.fillRect(0,0,w,h);
-    spots(x,w,h,240,[shade(color,-32),shade(color,30),shade(color,-58),shade(color,48)],2,7,.2,.55);return tx(c);}
+  // 무늬는 세 가지 — 얼룩(0, 예전 모습) · 줄무늬(1, 가스행성처럼) · 매끈(2). 대적점은 따로 켠다.
+  function customTexture(cfg){const color=cfg.color,w=256,h=128,c=cvns(w,h),x=c.getContext('2d');
+    x.fillStyle=color;x.fillRect(0,0,w,h);
+    const pat=cfg.pattern|0;
+    if(pat===1){for(let i=0;i<11;i++){const y=i*h/11;x.globalAlpha=.75;x.fillStyle=shade(color,(i%2?40:-40)+Math.round(rnd(-12,12)));
+        x.fillRect(0,y,w,h/11+1);}x.globalAlpha=1;
+      spots(x,w,h,70,[shade(color,-22),shade(color,26)],2,5,.12,.3);}
+    else if(pat===2)spots(x,w,h,40,[shade(color,18),shade(color,-18)],10,26,.06,.16);
+    else spots(x,w,h,240,[shade(color,-32),shade(color,30),shade(color,-58),shade(color,48)],2,7,.2,.55);
+    if(cfg.spot){x.save();x.translate(w*0.62,h*0.60);x.scale(1.7,1);
+      const g=x.createRadialGradient(0,0,1,0,0,16);
+      g.addColorStop(0,'#ff8a5c');g.addColorStop(.5,'#e04a2a');g.addColorStop(1,'rgba(170,50,25,0)');
+      x.fillStyle=g;x.beginPath();x.arc(0,0,16,0,TWO);x.fill();x.restore();}
+    return tx(c);}
   const creatorSheet=document.getElementById('creatorSheet');
   const CCOLORS=['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#9775fa','#ff8ed4','#63e6be'];
-  let cCfg={color:CCOLORS[3],size:1,ring:false},customCount=0;
+  const CPAT=['얼룩덜룩','줄무늬 🎏','매끈매끈'],CTILT=['똑바로','기울어요','누워서'],CSPEED=['느리게','보통','빠르게'],CSIZE=['작게','보통','크게'];
+  const TILTV=[0,0.42,1.5],SPEEDV=[210,130,70];
+  let cCfg={color:CCOLORS[3],size:1,ring:false,pattern:0,spot:false,tilt:1,speed:1,moons:1},customCount=0;
   function updatePreview(){const el=document.getElementById('cPreview');
-    el.style.background='radial-gradient(circle at 35% 30%, '+shade(cCfg.color,60)+', '+cCfg.color+' 70%, '+shade(cCfg.color,-50)+')';
+    let bg='radial-gradient(circle at 35% 30%, '+shade(cCfg.color,60)+', '+cCfg.color+' 70%, '+shade(cCfg.color,-50)+')';
+    if(cCfg.pattern===1)bg='repeating-linear-gradient(180deg,rgba(255,255,255,.20) 0 6px,rgba(0,0,0,.20) 6px 12px),'+bg;
+    if(cCfg.spot)bg='radial-gradient(ellipse 15% 10% at 66% 62%,#ff7a4d 0 60%,rgba(200,60,30,0) 100%),'+bg;
+    el.style.background=bg;
     el.style.boxShadow=(cCfg.ring?'0 0 0 5px rgba(255,255,255,.16), ':'')+'inset -10px -10px 22px rgba(0,0,0,.5),0 0 22px rgba(255,255,255,.15)';
-    const sz=[70,90,110][cCfg.size];el.style.width=sz+'px';el.style.height=sz+'px';}
+    const sz=[70,90,110][cCfg.size];el.style.width=sz+'px';el.style.height=sz+'px';
+    el.style.transform='rotate('+[0,24,88][cCfg.tilt]+'deg)';}
+  // 선택지 한 줄. innerHTML을 새로 그리므로 리스너가 쌓이지 않는다.
+  function pickRow(id,labels,cur,set){const box=document.getElementById(id);
+    box.innerHTML=labels.map((s,i)=>'<button class="'+(i===cur?'sel':'')+'" data-i="'+i+'">'+s+'</button>').join('');
+    box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{set(+b.dataset.i);buildCreatorUI();updatePreview();sfxClick();}));}
   function buildCreatorUI(){
     const sw=document.getElementById('cSwatches');sw.innerHTML=CCOLORS.map(c=>'<div class="sw'+(c===cCfg.color?' sel':'')+'" data-c="'+c+'" style="background:'+c+'"></div>').join('');
     sw.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>{cCfg.color=s.dataset.c;buildCreatorUI();updatePreview();sfxClick();}));
-    const sizeBox=document.getElementById('cSize');sizeBox.innerHTML=['작게','보통','크게'].map((s,i)=>'<button class="'+(i===cCfg.size?'sel':'')+'" data-s="'+i+'">'+s+'</button>').join('');
-    sizeBox.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{cCfg.size=+b.dataset.s;buildCreatorUI();updatePreview();sfxClick();}));
-    const ringBox=document.getElementById('cRing');ringBox.innerHTML=['없음','있음 💍'].map((s,i)=>'<button class="'+((!!i===cCfg.ring)?'sel':'')+'" data-r="'+i+'">'+s+'</button>').join('');
-    ringBox.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{cCfg.ring=b.dataset.r==='1';buildCreatorUI();updatePreview();sfxClick();}));}
+    pickRow('cSize',CSIZE,cCfg.size,i=>cCfg.size=i);
+    pickRow('cPattern',CPAT,cCfg.pattern,i=>cCfg.pattern=i);
+    pickRow('cSpot',['없음','있어요 🔴'],cCfg.spot?1:0,i=>cCfg.spot=!!i);
+    pickRow('cRing',['없음','있음 💍'],cCfg.ring?1:0,i=>cCfg.ring=!!i);
+    pickRow('cTilt',CTILT,cCfg.tilt,i=>cCfg.tilt=i);
+    pickRow('cSpeed',CSPEED,cCfg.speed,i=>cCfg.speed=i);
+    document.getElementById('cMoonNum').textContent=cCfg.moons+'개';}
+  document.getElementById('cMoonMinus').addEventListener('click',()=>{cCfg.moons=Math.max(0,cCfg.moons-1);buildCreatorUI();sfxClick();});
+  document.getElementById('cMoonPlus').addEventListener('click',()=>{cCfg.moons=Math.min(10,cCfg.moons+1);buildCreatorUI();sfxClick();});
   function makeCustomPlanet(cfg,save){
     const idx=customCount++,sizes=[1.2,2.0,3.0],funR=sizes[cfg.size]!==undefined?sizes[cfg.size]:2.0,funDist=214+idx*15;
-    const p={ko:cfg.name||'내 행성',emoji:'🪐',type:'custom',base:cfg.color,funR:funR,funDist:funDist,
-      rk:funR*3500,au:8+idx*2.5,orbit:120+idx*18,spin:1.2,tilt:0.3,ring:!!cfg.ring,custom:true,kind:'custom',
-      sub:'내가 만든 행성 💜',factList:[['만든이','나!'],['크기',['작아요','보통','커요'][cfg.size]||'보통'],['고리',cfg.ring?'있어요':'없어요'],['특별함','최고!']],
-      wow:'<b>내가 직접</b> 만든 특별한 행성이에요! 이름은 <b>'+(cfg.name||'내 행성')+'</b> 💜'};
+    const nMoon=Math.max(0,Math.min(10,cfg.moons|0));
+    const name=cfg.name||'내 행성';
+    const p={ko:name,emoji:'🪐',type:'custom',base:cfg.color,funR:funR,funDist:funDist,
+      rk:funR*3500,au:8+idx*2.5,orbit:(SPEEDV[cfg.speed]!==undefined?SPEEDV[cfg.speed]:130)+idx*12,spin:1.2,
+      tilt:(TILTV[cfg.tilt]!==undefined?TILTV[cfg.tilt]:0.3),ring:!!cfg.ring,custom:true,kind:'custom',
+      sub:'내가 만든 행성 💜',
+      factList:[['크기',['작아요','보통','커요'][cfg.size]||'보통'],['무늬',CPAT[cfg.pattern|0]||CPAT[0]],
+        ['큰 폭풍',cfg.spot?'있어요 🔴':'없어요'],['고리',cfg.ring?'있어요':'없어요'],
+        ['달(위성)',nMoon+'개'],['자전축',CTILT[cfg.tilt|0]||'기울어요'],['공전 속도',CSPEED[cfg.speed|0]||'보통']],
+      wow:'<b>내가 직접</b> 만든 특별한 행성이에요! 이름은 <b>'+name+'</b> 💜'
+        +(cfg.spot?' 목성처럼 <b>커다란 폭풍</b>도 있어요!':'')
+        +(nMoon?' 달이 <b>'+nMoon+'개</b>나 돌고 있어요 🌙':'')};
     const pivot=new THREE.Object3D();pivot.rotation.y=rnd(0,TWO);scene.add(pivot);
     const holder=new THREE.Object3D();pivot.add(holder);
-    const mesh=new THREE.Mesh(UNIT,new THREE.MeshStandardMaterial({map:customTexture(cfg.color),roughness:1,metalness:0}));
+    const cmat=new THREE.MeshStandardMaterial({map:customTexture(cfg),roughness:1,metalness:0});
+    if((cfg.pattern|0)===1)bandShader(cmat,0.005);   // 줄무늬는 가스행성처럼 흐른다(폭풍도 같이 이동)
+    const mesh=new THREE.Mesh(UNIT,cmat);
     mesh.userData.data=p;p._mesh=mesh;
     const tilt=new THREE.Object3D();tilt.rotation.z=p.tilt;holder.add(tilt);tilt.add(mesh);clickMeshes.push(mesh);
     if(p.ring){const inner=1.4,outer=2.2,rg=new THREE.RingGeometry(inner,outer,60),pa=rg.attributes.position,v=new THREE.Vector3();
@@ -1613,20 +1662,40 @@ function start(){
       ring.rotation.x=Math.PI/2;mesh.add(ring);}
     const axis=new THREE.Line(AXISGEO,new THREE.LineBasicMaterial({color:0xbfe6ff,transparent:true,opacity:.32,depthWrite:false}));
     axis.visible=showAxis;mesh.add(axis);axisLines.push(axis);
-    const b={pivot:pivot,holder:holder,tilt:tilt,mesh:mesh,axis:axis,p:p,moonPivots:[]};
+    const b={pivot:pivot,holder:holder,tilt:tilt,mesh:mesh,axis:axis,p:p,moonPivots:[],moonLabs:[]};
+    // 달: 행성 반지름의 배수로 크기·거리를 정해 두 모드에서 같은 비율로 보인다.
+    const MSTYLE=['rock','ice','haze','volcano'],MEMO=['🌙','🌕','🌑','⚪','🪨'];
+    for(let i=0;i<nMoon;i++){
+      // dr = 행성 반지름의 배수. 2.6부터 시작하는 이유는 고리 외경이 2.2라서다 — 달이 고리를 뚫지 않는다.
+      const dr=2.6+i*0.55, sat={ko:name+' 달'+(i+1),emoji:MEMO[i%MEMO.length],
+        funR:funR*0.2,funDist:funR*dr,mk:p.rk*0.2,dk:p.rk*dr,orbit:2.2+i*0.7,
+        base:shade(cfg.color,[46,-30,18][i%3]),style:MSTYLE[i%MSTYLE.length],inc:rnd(-0.3,0.3),kind:'moon',
+        sub:name+'을(를) 도는 달',
+        factList:[['소속',name],['크기','작아요'],['순서',(i+1)+'번째 달'],['만든이','나!']],
+        wow:'<b>'+name+'</b> 둘레를 도는 달이에요. 내가 만든 달! 🌙'};
+      const mp=new THREE.Object3D();mp.rotation.y=rnd(0,TWO);mp.rotation.x=sat.inc;holder.add(mp);
+      const smesh=new THREE.Mesh(UNIT,new THREE.MeshStandardMaterial({map:moonTexture(sat.base,sat.style),roughness:1,metalness:0}));
+      smesh.userData.data=sat;sat._mesh=smesh;
+      mp.add(smesh);clickMeshes.push(smesh);b.moonPivots.push({pivot:mp,sat:sat,mesh:smesh});
+      const mlab={mesh:smesh,p:sat,label:mkLabel(sat,'moon'),off:11,isMoon:true};
+      labeled.push(mlab);b.moonLabs.push(mlab);}
     const ol=new THREE.Line(ORBITGEO,new THREE.LineBasicMaterial({color:0x9dff9d,transparent:true,opacity:.25}));
     ol.visible=showOrbits;scene.add(ol);orbitLines.push(ol);b.orbit=ol;
     const lab={mesh:mesh,p:p,label:mkLabel(p,''),off:19};
     bodies.push(b);labeled.push(lab);b.lab=lab;p._body=b;p._cfg=cfg;
     const R=MODE_REAL?p.rk*KM:p.funR,D=MODE_REAL?p.au*AUU:p.funDist;
-    p._r=R;mesh.scale.setScalar(R);holder.position.x=D;ol.scale.setScalar(D);return b;}
+    p._r=R;mesh.scale.setScalar(R);holder.position.x=D;ol.scale.setScalar(D);
+    b.moonPivots.forEach(m=>{const s=m.sat,sr=MODE_REAL?s.mk*KM:s.funR,sd=MODE_REAL?s.dk*KM:s.funDist;
+      s._r=sr;m.mesh.scale.setScalar(sr);m.mesh.position.x=sd;});
+    return b;}
   let customPlanets=[];try{customPlanets=JSON.parse(localStorage.getItem('myplanets')||'[]');}catch(e){}
   function saveCustom(){try{localStorage.setItem('myplanets',JSON.stringify(customPlanets));}catch(e){}}
   customPlanets.slice(0,8).forEach(cfg=>makeCustomPlanet(cfg));
   function openCreator(){document.getElementById('cName2').value='반짝이';buildCreatorUI();updatePreview();showSheet(creatorSheet);}
   document.getElementById('cLaunch').addEventListener('click',()=>{
     const name=(document.getElementById('cName2').value||'반짝이').slice(0,6);
-    const cfg={color:cCfg.color,size:cCfg.size,ring:cCfg.ring,name:name};
+    const cfg={color:cCfg.color,size:cCfg.size,ring:cCfg.ring,name:name,
+      pattern:cCfg.pattern,spot:cCfg.spot,tilt:cCfg.tilt,speed:cCfg.speed,moons:cCfg.moons};
     customPlanets.push(cfg);saveCustom();
     const b=makeCustomPlanet(cfg);
     hideSheet(creatorSheet);sfxClick();speak(name+' 행성이 태어났어요!');markSeen(name);if(!MODE_REAL)focusOn(b.p);});
@@ -1637,6 +1706,9 @@ function start(){
     i=orbitLines.indexOf(b.orbit);if(i>=0)orbitLines.splice(i,1);
     i=clickMeshes.indexOf(b.mesh);if(i>=0)clickMeshes.splice(i,1);
     b.mesh.children.forEach(ch=>{const ai=axisLines.indexOf(ch);if(ai>=0)axisLines.splice(ai,1);});
+    // 달도 같이 지운다 — 메시(피킹)와 이름표가 남으면 없는 천체를 누를 수 있다.
+    (b.moonPivots||[]).forEach(m=>{const ci=clickMeshes.indexOf(m.mesh);if(ci>=0)clickMeshes.splice(ci,1);});
+    (b.moonLabs||[]).forEach(ml=>{const li=labeled.indexOf(ml);if(li>=0)labeled.splice(li,1);ml.label.remove();});
     if(b.lab){const li=labeled.indexOf(b.lab);if(li>=0)labeled.splice(li,1);b.lab.label.remove();}
     i=customPlanets.indexOf(p._cfg);if(i>=0){customPlanets.splice(i,1);saveCustom();}
     closeCard();sfxClick();speak(p.ko+' 행성을 지웠어요');}
