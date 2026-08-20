@@ -544,7 +544,7 @@
       {id:'mercury',ko:'수성',emoji:'🪨',sub:'태양과 가장 가까운 행성',a:.3871,e:.2056,i:7.005,node:48.34,peri:77.46,L:252.25,period:87.97,r:2440,rot:1407.6,tilt:.034,color:'#9d9185',style:'rock',surf:'regolith',
         temp:'-180 ~ 430°C',moons:'없음',visit:'매리너 10호 · 메신저 · 베피콜롬보',fact:'낮에는 뜨겁고 밤에는 아주 추워요. 태양을 두 바퀴 도는 동안 정확히 세 번 자전해요. 햇빛이 닿지 않는 극지방 크레이터 바닥에는 얼음이 숨어 있어요.'},
       {id:'venus',ko:'금성',emoji:'🟡',sub:'구름 아래 숨은 뜨거운 행성',a:.7233,e:.0068,i:3.395,node:76.68,peri:131.6,L:181.98,period:224.7,r:6052,rot:-5832.6,tilt:177.36,color:'#dda854',style:'venus',surf:'venus',
-        temp:'약 464°C',moons:'없음',visit:'베네라 · 마젤란 · 아카츠키',fact:'두꺼운 이산화탄소 구름이 열을 가두어 태양계에서 가장 뜨거워요. 다른 행성과 반대로 아주 천천히 돌아서 하루가 1년보다 길어요.'},
+        temp:'약 464°C',moons:'없음… 정말?',visit:'베네라 · 마젤란 · 아카츠키',fact:'두꺼운 이산화탄소 구름이 열을 가두어 태양계에서 가장 뜨거워요. 다른 행성과 반대로 아주 천천히 돌아서 하루가 1년보다 길어요.'},
       {id:'earth',ko:'지구',emoji:'🌍',sub:'물이 흐르는 푸른 행성',a:1,e:.0167,i:0,node:0,peri:102.94,L:100.46,period:365.256,r:6371,rot:23.9345,tilt:23.44,color:'#397dd1',style:'earth',surf:'earth',
         temp:'평균 15°C',moons:'1개',fact:'우리가 사는 곳이에요. 지금까지 생명이 확인된 유일한 행성이고, 표면의 71%가 액체 바다로 덮여 있어요.'},
       {id:'mars',ko:'화성',emoji:'🔴',sub:'붉은 흙과 높은 산의 행성',a:1.5237,e:.0934,i:1.85,node:49.56,peri:336.04,L:355.45,period:686.98,r:3390,rot:24.6229,tilt:25.19,color:'#c75e3b',style:'mars',surf:'mars',
@@ -555,6 +555,9 @@
         temp:'-105 ~ -35°C',moons:'없음',visit:'돈(Dawn) 탐사선',fact:'소행성대에서 가장 큰 천체이자 안쪽 태양계의 유일한 왜소행성이에요. 오케이터 크레이터의 하얀 점은 지하에서 올라온 소금이에요.'},
       {id:'pallas',ko:'팔라스',emoji:'🔩',sub:'크게 기울어 도는 소행성',a:2.772,e:.2299,i:34.84,node:173.02,peri:123.22,L:182.22,period:1685.6,r:256,rot:7.813,tilt:84,color:'#8d8f92',style:'rock',surf:'regolith',minor:true,
         temp:'약 -110°C',moons:'없음',visit:'아직 방문 못 함',fact:'궤도가 35도나 기울어져 다른 소행성들과 다른 길을 가요. 그래서 충돌을 많이 겪어 표면이 온통 크레이터투성이예요.'},
+      // 🥚 이스터에그 — 실제 소행성이 아니다. 궤도요소는 소행성대(2~3.3 AU) 안에 들어가도록 지어냈다.
+      {id:'yeonjae',ko:'연재별',emoji:'⭐',sub:'소행성대에 숨어 반짝이는 별',a:2.5555,e:.0721,i:5.83,node:145.2,peri:66.4,L:311.7,period:1492.6,r:14,rot:6.7,tilt:12,color:'#f2c76b',style:'rock',surf:'regolith',minor:true,
+        temp:'약 -100°C',moons:'없음',visit:'아직 아무도 못 찾았어요',fact:'화성과 목성 사이 소행성대에 숨어 있는 아주 작은 별이에요. 너무 작아서 이름표도 눌러야 나타나요. 찾았다면 우주에서 제일 운이 좋은 사람이에요! ⭐'},
       {id:'jupiter',ko:'목성',emoji:'🟤',sub:'가장 크고 빠르게 도는 행성',a:5.2029,e:.0484,i:1.303,node:100.56,peri:14.75,L:34.4,period:4332.6,r:69911,rot:9.9250,tilt:3.13,color:'#c59b6d',style:'jupiter',surf:'gas',gas:true,
         rings:[{inner:1.72,outer:1.81,alpha:.10,color:'#c9a887'},{inner:1.81,outer:3.10,alpha:.035,color:'#b4967c'}],
         temp:'구름 위 -145°C',moons:'97개 확인',visit:'보이저 · 갈릴레오 · 주노',fact:'태양계에서 가장 큰 행성이고 하루가 10시간도 안 될 만큼 빨리 돌아요. 단단한 땅은 없고, 지구보다 큰 폭풍인 대적점이 수백 년째 불고 있어요.'},
@@ -592,6 +595,11 @@
     const moonData=[
       {id:'moon',parent:'earth',ko:'달',emoji:'🌙',sub:'사람이 다녀온 지구의 위성',r:1737.4,dk:384400,period:27.3217,ecc:.0549,inc:5.145,plane:'ecliptic',color:'#aaa8a2',style:'rock',tex:'moon',
         fact:'지구와 조석 고정되어 늘 같은 쪽 얼굴만 보여줘요. 사람이 발자국을 남긴 유일한 천체이고, 매년 3.8cm씩 지구에서 멀어지고 있어요.'},
+      // 🥚 이스터에그 — 금성에는 실제로 위성이 없다. 궤도·크기는 금성 힐 구(중력이 미치는 범위) 안에 들어가도록 지어냈다.
+      {id:'junjae',parent:'venus',ko:'준재별',emoji:'💫',sub:'금성 곁을 도는 비밀 달',r:9,dk:18000,period:.308,ecc:.004,inc:2.1,color:'#f6d9a0',style:'rock',surf:'regolith',
+        fact:'금성에는 원래 달이 하나도 없어요. 그런데 여기 아주 작은 달이 숨어 있네요! 금성을 하루에 세 번이나 돌아요. 💫'},
+      {id:'junghyun',parent:'venus',ko:'정현별',emoji:'✨',sub:'조금 더 멀리 도는 비밀 달',r:7,dk:31000,period:.696,ecc:.006,inc:3.4,color:'#e9e2d2',style:'ice',surf:'ice',
+        fact:'준재별보다 조금 더 멀리서 천천히 돌아요. 얼음으로 되어 있어서 금성의 두꺼운 구름 위에서 하얗게 반짝여요. ✨'},
       {id:'phobos',parent:'mars',ko:'포보스',emoji:'🥔',sub:'화성으로 떨어지는 감자 달',r:11.3,dk:9376,period:.3189,ecc:.0151,inc:1.09,color:'#786d61',style:'rock',tex:'phobosReal',
         fact:'감자처럼 울퉁불퉁하고, 100년에 2m씩 화성에 가까워져요. 5천만 년쯤 뒤에는 부서져 화성의 고리가 될 거예요.'},
       {id:'deimos',parent:'mars',ko:'데이모스',emoji:'🪨',sub:'화성의 아주 작은 바깥 달',r:6.2,dk:23463,period:1.2624,ecc:.0003,inc:.93,color:'#918475',style:'rock',tex:'deimosReal',
