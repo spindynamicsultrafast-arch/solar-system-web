@@ -580,6 +580,9 @@
       {id:'quaoar',ko:'콰오아',emoji:'💍',sub:'있을 수 없는 고리를 가진 천체',a:43.694,e:.0392,i:7.987,node:188.93,peri:346.56,L:279.66,period:105500,r:545,rot:17.679,tilt:14,color:'#a8836b',style:'ice',surf:'tholin',dwarf:true,
         rings:[{inner:4.60,outer:4.75,alpha:.22,color:'#b9a894'},{inner:7.40,outer:7.60,alpha:.16,color:'#a89685'}],
         temp:'약 -229°C',moons:'1개 (웨이워트)',visit:'아직 방문 못 함',fact:'2023년에 고리가 발견됐는데, 원래 고리가 뭉쳐 위성이 되어야 할 만큼 먼 곳에 있어요. 왜 아직 고리로 남아 있는지 과학자들도 연구 중이에요.'},
+      // 🥚 이스터에그 — 실제 천체가 아니다. 궤도요소는 고전 카이퍼 벨트(42~48 AU) 안에 들어가도록 지어냈다.
+      {id:'sihyeon',ko:'시현별',emoji:'🌟',sub:'카이퍼 벨트에 숨은 얼음별',a:44.4,e:.0883,i:9.42,node:212.7,peri:58.3,L:127.4,period:108070,r:12,rot:8.4,tilt:19,color:'#bfe6f2',style:'ice',surf:'ice',minor:true,
+        temp:'약 -230°C',moons:'없음',visit:'아직 아무도 못 찾았어요',fact:'해왕성보다 훨씬 먼 카이퍼 벨트에 숨어 있는 아주 작은 얼음별이에요. 태양을 한 바퀴 도는 데 296년이나 걸려요. 여기까지 찾아왔다면 진짜 우주 탐험가예요! 🌟'},
       {id:'makemake',ko:'마케마케',emoji:'🟠',sub:'붉은빛의 얼음 왜소행성',a:45.79,e:.159,i:29,node:79.4,peri:294.8,L:165.5,period:111845,r:715,rot:22.827,tilt:25,color:'#a86b4c',style:'pluto',surf:'tholin',dwarf:true,
         temp:'약 -239°C',moons:'1개 (MK2)',visit:'아직 방문 못 함',fact:'메테인 얼음이 햇빛을 받아 붉은 갈색으로 변했어요. 2024년 제임스 웹 우주망원경이 표면에서 따뜻한 메테인 가스의 흔적을 찾아냈어요.'},
       {id:'gonggong',ko:'공공',emoji:'🔴',sub:'가장 붉은 얼음 왜소행성',a:67.38,e:.5019,i:30.63,node:336.83,peri:183.86,L:288.76,period:202000,r:615,rot:22.4,tilt:0,color:'#a05c4a',style:'pluto',surf:'tholin',dwarf:true,
@@ -589,8 +592,8 @@
       {id:'sedna',ko:'세드나',emoji:'🟥',sub:'가장 멀리까지 나가는 붉은 천체',a:506.2,e:.8496,i:11.93,node:144.25,peri:95.67,L:94.07,period:4163000,r:498,rot:15.7,tilt:0,color:'#8d3f30',style:'pluto',surf:'tholin',dwarf:true,far:true,
         temp:'약 -260°C',moons:'없음',visit:'아직 방문 못 함',fact:'태양을 한 바퀴 도는 데 약 1만 1천 년이 걸려요. 가장 멀 때는 해왕성보다 30배나 멀리 나가서, 오르트 구름의 안쪽 끝을 알려 주는 열쇠로 여겨져요.'}
     ];
-    const travel={moon:'약 3일',mercury:'약 5개월',venus:'약 5개월',mars:'약 7개월',vesta:'약 1년 3개월',ceres:'약 1년 3개월',pallas:'약 1년 4개월',jupiter:'약 2년',saturn:'약 3년',
-      uranus:'약 9년',neptune:'약 12년',orcus:'약 9년 반',pluto:'약 9년 반',haumea:'10년보다 오래',quaoar:'10년보다 오래',makemake:'10년보다 오래',gonggong:'12년보다 오래',eris:'12년보다 오래',sedna:'30년보다 오래'};
+    const travel={moon:'약 3일',mercury:'약 5개월',venus:'약 5개월',mars:'약 7개월',vesta:'약 1년 3개월',ceres:'약 1년 3개월',pallas:'약 1년 4개월',yeonjae:'약 1년 4개월',jupiter:'약 2년',saturn:'약 3년',
+      uranus:'약 9년',neptune:'약 12년',orcus:'약 9년 반',pluto:'약 9년 반',haumea:'10년보다 오래',quaoar:'10년보다 오래',sihyeon:'10년보다 오래',makemake:'10년보다 오래',gonggong:'12년보다 오래',eris:'12년보다 오래',sedna:'30년보다 오래'};
     // 위성: r=평균반지름(km), dk=궤도 긴반지름(km), period=공전주기(일), ecc=궤도이심률, inc=모행성 적도면 기준 경사(도)
     const moonData=[
       {id:'moon',parent:'earth',ko:'달',emoji:'🌙',sub:'사람이 다녀온 지구의 위성',r:1737.4,dk:384400,period:27.3217,ecc:.0549,inc:5.145,plane:'ecliptic',color:'#aaa8a2',style:'rock',tex:'moon',
@@ -3999,7 +4002,7 @@
     const bodyListEl=document.getElementById('bodyList'),bodyCards={};
     data.slice().sort((a,b)=>a.a-b.a).forEach(p=>{
       const moons=moonData.filter(m=>m.parent===p.id),isEarth=p.id==='earth';
-      const kind=p.dwarf?'왜소행성':p.minor?'소행성':'행성';
+      const kind=p.dwarf?'왜소행성':p.minor?(p.a>30?'카이퍼 벨트 천체':'소행성'):'행성';
       const au=p.a<10?p.a.toFixed(2):Math.round(p.a);
       const card=document.createElement('div');
       card.className='bcard';card.dataset.id=p.id;card.dataset.visit=p.id;
