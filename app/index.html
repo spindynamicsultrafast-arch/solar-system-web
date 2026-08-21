@@ -1426,11 +1426,11 @@
       // 실제 백색광 태양 사진이 정확히 이렇다. 문턱 아래로만 맞추면 상아색 공이 된다.
       // uTint 는 **다른 별**을 위한 것이다. 태양은 (1,1,1) 이라 아무 영향이 없고, 별 가까이 보기가
       // 이 재질을 복제해 표면온도에 맞는 색을 넣는다 — 쌀알무늬·흑점·주연감광이 통째로 따라온다.
-      uniforms:{map:{value:sunTexture},uSunTime:{value:0},uBright:{value:1.45},uHasMap:{value:sunTexture?1:0},uWarm:{value:0},uTint:{value:new THREE.Color(1,1,1)},uTintMix:{value:0},uMapAmt:{value:.17}},
+      uniforms:{map:{value:sunTexture},uSunTime:{value:0},uBright:{value:1.45},uHasMap:{value:sunTexture?1:0},uWarm:{value:0},uTint:{value:new THREE.Color(1,1,1)},uTintMix:{value:0},uMapAmt:{value:.17},uSpots:{value:1}},
       vertexShader:'varying vec2 vUv;varying vec3 vN;varying vec3 vV;'+LOGD_VP+
         'void main(){vUv=uv;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;'+LOGD_V+'}',
       fragmentShader:[
-        'uniform sampler2D map;uniform float uSunTime,uBright,uHasMap,uWarm,uTintMix,uMapAmt;uniform vec3 uTint;varying vec2 vUv;varying vec3 vN;varying vec3 vV;'+LOGD_FP,
+        'uniform sampler2D map;uniform float uSunTime,uBright,uHasMap,uWarm,uTintMix,uMapAmt,uSpots;uniform vec3 uTint;varying vec2 vUv;varying vec3 vN;varying vec3 vV;'+LOGD_FP,
         'vec3 srgb2lin(vec3 c){return mix(c/12.92,pow((c+0.055)/1.055,vec3(2.4)),step(vec3(0.04045),c));}',
         'float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
         'float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);',
@@ -1505,8 +1505,8 @@
         ' vec2 s6=spot(uv,vec2(0.905,0.362),vec2(0.033,0.018),3.3);',
         ' vec2 s7=spot(uv,vec2(0.947,0.390),vec2(0.018,0.010),0.7);',
         ' vec2 s8=spot(uv,vec2(0.342,0.283),vec2(0.015,0.009),2.8);',
-        ' float umb=max(max(max(s1.x,s2.x),max(s3.x,s4.x)),max(max(s5.x,s6.x),max(s7.x,s8.x)));',
-        ' float pen=max(max(max(s1.y,s2.y),max(s3.y,s4.y)),max(max(s5.y,s6.y),max(s7.y,s8.y)));',
+        ' float umb=max(max(max(s1.x,s2.x),max(s3.x,s4.x)),max(max(s5.x,s6.x),max(s7.x,s8.x)))*uSpots;',
+        ' float pen=max(max(max(s1.y,s2.y),max(s3.y,s4.y)),max(max(s5.y,s6.y),max(s7.y,s8.y)))*uSpots;',
         // 백반(faculae): 흑점 주위의 자기장이 강한 곳. 실제로는 원반 가장자리에서 훨씬 뚜렷해진다.
         ' float mu=clamp(abs(dot(normalize(vN),normalize(vV))),0.0,1.0),om=1.0-mu;',
         ' float plage=clamp(pen*1.6+umb*0.6,0.0,1.0);',
@@ -1609,10 +1609,10 @@
       ' return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}'
     ].join('\n');
     const spiculeMat=new THREE.ShaderMaterial({
-      uniforms:{uTime:{value:0}},transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,
+      uniforms:{uTime:{value:0},uCol:{value:new THREE.Color(1.0,0.26,0.12)},uGain:{value:5.0}},transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,
       vertexShader:'varying vec3 vN;varying vec3 vV;varying vec2 vUv;'+LOGD_VP+
         'void main(){vUv=uv;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;'+LOGD_V+'}',
-      fragmentShader:['uniform float uTime;varying vec3 vN;varying vec3 vV;varying vec2 vUv;'+LOGD_FP,GLSL_NOISE,
+      fragmentShader:['uniform float uTime,uGain;uniform vec3 uCol;varying vec3 vN;varying vec3 vV;varying vec2 vUv;'+LOGD_FP,GLSL_NOISE,
         'void main(){'+LOGD_F,
         ' float mu=abs(dot(normalize(vN),normalize(vV)));',
         ' float rim=pow(1.0-mu,4.2);',                                  // 가장자리에서만 보인다
@@ -1622,7 +1622,7 @@
         ' float s2=vn(vec2(vUv.x*310.0,vUv.y*34.0-t*0.7));',
         ' float spike=pow(max(s1,s2*0.9),2.6);',
         ' float a=rim*(0.22+1.7*spike);',
-        ' gl_FragColor=vec4(vec3(1.0,0.26,0.12)*a*5.0,a);}'].join('\n')});
+        ' gl_FragColor=vec4(uCol*a*uGain,a);}'].join('\n')});
     const spicules=new THREE.Mesh(new THREE.SphereGeometry(1.022,128,80),spiculeMat);sun.add(spicules);
 
     // ---- 홍염(prominence) ----
@@ -5088,7 +5088,15 @@
       // 애써 파랗게 칠한 리겔이 도로 흰 공이 되는 이유가 이것이었다. 중간톤을 1 아래에 두면
       // 색이 살아남고, 눈부심은 코로나 스프라이트가 낸다(가장자리에서만 문턱을 넘는다).
       mat.uniforms.uBright.value=0.95;
+      // 흑점은 끈다. 자리 8개가 **태양의 실제 흑점군**이라 그대로 얹으면 「태양의 흑점을 가진
+      // 리겔」이 된다. 게다가 뜨거운 별일수록 대류층이 얕아 흑점다운 흑점이 생기지 않는다.
+      mat.uniforms.uSpots.value=0;
       const star=new THREE.Mesh(UNIT,mat);group.add(star);
+      // 불타는 테. 광구 바로 위 채층을 가느다란 제트(스피큘)가 뒤덮고 있어서, 가장자리에서만
+      // 보인다(rim=pow(1-mu,4.2)). 태양에서는 Hα 때문에 붉지만 여기서는 그 별의 색으로 태운다 —
+      // 원반 색과 같은 색이 가장자리에서 몇 배로 밝아지므로 「불타는 공」이 된다.
+      const rimMat=spiculeMat.clone();rimMat.uniforms.uGain.value=7.5;
+      const rim=new THREE.Mesh(new THREE.SphereGeometry(1.03,96,64),rimMat);star.add(rim);
       // 후광·코로나는 태양이 쓰는 그림을 그대로 빌린다. 스프라이트 크기는 반지름의 K 배이고
       // 여기서 별 반지름이 1 이므로 태양 쪽과 같은 K 를 그대로 넣으면 된다.
       function haloSprite(map,k,op){
@@ -5096,26 +5104,22 @@
           blending:THREE.AdditiveBlending,depthWrite:false,opacity:op}));
         sp.scale.setScalar(k);group.add(sp);return sp;
       }
-      const halo=[haloSprite(sunGlow.material.map,SG_K,1.30),
-                  haloSprite(sunGlowOuter.material.map,SGO_K,.92),
-                  haloSprite(sunCorona.material.map,SC_K,.50)];
+      // 후광은 태양보다 **크고 세게** 준다. 별 하나만 놓고 보는 화면이라 코로나가 수성 궤도를
+      // 덮을 걱정이 없다. 안쪽 한 겹만은 오히려 약하게 — 세게 주면 원반 가장자리가 흰색으로
+      // 뭉개져서 애써 칠한 색이 거기서부터 사라진다(가산합성이라 세 채널이 같이 1을 넘는다).
+      const halo=[haloSprite(sunGlow.material.map,SG_K*1.06,.62),
+                  haloSprite(sunGlowOuter.material.map,SGO_K*1.15,.80),
+                  haloSprite(sunCorona.material.map,SC_K*1.35,.92)];
+      // 코로나 스트리머는 천천히 돈다. 가만히 있는 후광은 그림이지만, 돌면 살아 있는 것이 된다.
+      halo[2].material.rotation=0;
       // 크기 비교용 태양. 재질은 복제한다 — 진짜 태양은 탐험 모드에서 붉게 칠해져 있고(uWarm),
       // 그 칠은 「어디 있는지 보이라고」 한 것이다. 별과 나란히 세우는 화면에서는 태양도
       // 제 색(흰색)이어야 크기와 색을 같은 자로 읽을 수 있다.
       const sunRefMat=sunMat.clone();sunRefMat.uniforms.uWarm.value=0;
       const sunRef=new THREE.Mesh(UNIT,sunRefMat);group.add(sunRef);
-      // 태양이 화면에서 1픽셀도 안 될 때가 많다(베텔게우스 옆에서는 0.4픽셀). 그래서 **찾으라고**
-      // 동그라미를 하나 그려 둔다. 크기를 부풀리는 게 아니라 자리를 가리키는 표시다 —
-      // 화면에서 늘 같은 크기가 되도록 카메라 거리에 비례해 키운다.
-      const RING_TEX=(()=>{
-        const S=128,c=document.createElement('canvas');c.width=c.height=S;
-        const x=c.getContext('2d');x.strokeStyle='rgba(255,235,170,.95)';x.lineWidth=4;
-        x.beginPath();x.arc(S/2,S/2,S/2-9,0,Math.PI*2);x.stroke();
-        return new THREE.CanvasTexture(c);
-      })();
-      const sunRing=new THREE.Sprite(new THREE.SpriteMaterial({map:RING_TEX,transparent:true,
-        depthWrite:false,depthTest:false,opacity:.9}));
-      sunRing.renderOrder=5;group.add(sunRing);
+      // 태양이 화면에서 1픽셀도 안 될 때가 많다(베텔게우스 옆에서는 0.4픽셀). 예전에는 자리를
+      // 가리키는 동그라미를 그렸는데, 텅 빈 흰 고리가 오히려 「저게 태양인가」로 읽혔다.
+      // 이름표 하나로 충분하다 — 가리키는 것은 글자가 하고, 크기는 눈이 알아서 읽는다.
       function mkLab(cls,txt){
         const el=document.createElement('div');el.className=cls;el.textContent=txt;
         el.style.display='none';labels.appendChild(el);return el;
@@ -5130,7 +5134,6 @@
         // 1.06 = 표면 바로 앞. 로그로 이어야 손잡이 절반에서 「절반쯤 다가간」 느낌이 난다.
         const d=Math.exp(Math.log(maxD)+(Math.log(1.06)-Math.log(maxD))*t);
         camera.position.set(0,d*.09,d*.996);camera.up.set(0,1,0);camera.lookAt(0,0,0);
-        sunRing.scale.setScalar(Math.max(sunR*2.6,d*.055));
       }
       function enter(st){
         cur=st;
@@ -5155,12 +5158,15 @@
         const c=st.tint;
         mat.uniforms.uTint.value.setRGB(c[0],c[1],c[2]);
         mat.uniforms.uTintMix.value=1;
-        halo.forEach(sp=>sp.material.color.setRGB(c[0],c[1],c[2]));
+        rimMat.uniforms.uCol.value.setRGB(c[0],c[1],c[2]);
+        // 후광은 원반보다 한 단계 더 진한 색으로 준다. 가산합성이라 겹칠수록 흰쪽으로 가는데,
+        // 진한 색으로 시작해야 다 겹친 자리에서 겨우 원반과 같은 색으로 읽힌다.
+        halo.forEach(sp=>sp.material.color.setRGB(c[0]*c[0],c[1]*c[1],c[2]));
         // 별 반지름 = 1 로 두었으므로 태양 반지름은 1/(태양의 몇 배) 다.
         sunR=1/st.r;
         sunRef.scale.setScalar(sunR);
         const x=-(1+sunR)*1.9;
-        sunRef.position.set(x,0,0);sunRing.position.set(x,0,0);
+        sunRef.position.set(x,0,0);
         maxD=Math.max(4.2,Math.abs(x)+sunR+1.6);
         let h=0;for(let i=0;i<st.ko.length;i++)h=(h*31+st.ko.charCodeAt(i))%997;
         star.rotation.y=h/997*TAU;
@@ -5189,6 +5195,9 @@
         if(!active)return;
         star.rotation.y+=dt*.05;sunRef.rotation.y+=dt*.05;
         mat.uniforms.uSunTime.value=sunRefMat.uniforms.uSunTime.value=now*.001;
+        rimMat.uniforms.uTime.value=now*.001;
+        // 코로나가 아주 천천히 돈다. 멈춰 있으면 붙여 놓은 그림이고, 돌면 뿜고 있는 것이 된다.
+        halo[2].material.rotation+=dt*.02;halo[1].material.rotation-=dt*.012;
         // 이름표. 별 이름은 물러나 있을 때만 — 표면 앞까지 가면 별이 화면을 다 덮어서 글자가 방해다.
         const far=parseFloat(zoomEl.value)<.45;
         place(starLab,_svV.set(0,1.25,0),far);
