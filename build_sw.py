@@ -25,6 +25,9 @@ files = sorted(
 rel = [str(p.relative_to(BASE)).replace("\\", "/") for p in files]
 
 h = hashlib.sha1()
+h.update(pathlib.Path(__file__).read_bytes())   # 워커 코드가 바뀌어도 버전이 오르게 한다.
+                                                # 안 넣으면 캐시 전략을 고쳐도 VER 이 그대로라
+                                                # 이미 설치된 앱이 새 워커의 동작을 못 받는다.
 for p, r in zip(files, rel):
     h.update(r.encode())
     h.update(p.read_bytes())
