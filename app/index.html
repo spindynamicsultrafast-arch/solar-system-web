@@ -1425,12 +1425,12 @@
       // 가장자리는 한참 아래에 남는다 → 중심은 눈부시게 번지고 가장자리에는 쌀알무늬·흑점이 남는다.
       // 실제 백색광 태양 사진이 정확히 이렇다. 문턱 아래로만 맞추면 상아색 공이 된다.
       // uTint 는 **다른 별**을 위한 것이다. 태양은 (1,1,1) 이라 아무 영향이 없고, 별 가까이 보기가
-      // 이 재질을 복제해 표면온도에 맞는 색을 넣는다 — 쌀알무늬·흑점·주연감광이 통쩄 따라온다.
-      uniforms:{map:{value:sunTexture},uSunTime:{value:0},uBright:{value:1.45},uHasMap:{value:sunTexture?1:0},uWarm:{value:0},uTint:{value:new THREE.Color(1,1,1)},uTintMix:{value:0}},
+      // 이 재질을 복제해 표면온도에 맞는 색을 넣는다 — 쌀알무늬·흑점·주연감광이 통째로 따라온다.
+      uniforms:{map:{value:sunTexture},uSunTime:{value:0},uBright:{value:1.45},uHasMap:{value:sunTexture?1:0},uWarm:{value:0},uTint:{value:new THREE.Color(1,1,1)},uTintMix:{value:0},uMapAmt:{value:.17}},
       vertexShader:'varying vec2 vUv;varying vec3 vN;varying vec3 vV;'+LOGD_VP+
         'void main(){vUv=uv;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;'+LOGD_V+'}',
       fragmentShader:[
-        'uniform sampler2D map;uniform float uSunTime,uBright,uHasMap,uWarm,uTintMix;uniform vec3 uTint;varying vec2 vUv;varying vec3 vN;varying vec3 vV;'+LOGD_FP,
+        'uniform sampler2D map;uniform float uSunTime,uBright,uHasMap,uWarm,uTintMix,uMapAmt;uniform vec3 uTint;varying vec2 vUv;varying vec3 vN;varying vec3 vV;'+LOGD_FP,
         'vec3 srgb2lin(vec3 c){return mix(c/12.92,pow((c+0.055)/1.055,vec3(2.4)),step(vec3(0.04045),c));}',
         'float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
         'float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);',
@@ -1491,8 +1491,11 @@
         // 쌀알무늬가 살아남는다. 대신 원반 전체를 중간톤으로 내린다 —
         // 실제 망원경 사진도 원반은 중간톤이고 눈부심은 코로나가 낸다.
         ' float b=0.74*(0.80+0.28*bulge)*(0.84+0.18*lane1)*(0.95+0.09*g1.z);',
-        // 실사 지도는 큰 흐름만 아주 옅게 빌려 쓴다. 세게 쓰면 그림 같은 얼룩이 되살아난다.
-        ' if(uHasMap>0.5){float m=dot(srgb2lin(texture2D(map,uv).rgb),vec3(0.2126,0.7152,0.0722));b*=0.92+0.17*m;}',
+        // 실사 지도를 얼마나 세게 쓸지는 uMapAmt 가 정한다. 태양은 0.17 — 큰 흐름만 아주 옅게
+        // 빌려 쓴다(세게 쓰면 그림 같은 얼룩이 되살아난다). 계수는 1-0.17*0.47=0.920 이라
+        // 예전 상수와 소수점까지 같다. **다른 별**에서는 이 값을 올려 실제 태양 사진의 구조
+        // (백반·필라멘트·활동영역)를 그대로 쓰고, 색만 그 별의 온도색으로 갈아 끼운다.
+        ' if(uHasMap>0.5){float m=dot(srgb2lin(texture2D(map,uv).rgb),vec3(0.2126,0.7152,0.0722));b*=(1.0-uMapAmt*0.47)+uMapAmt*m;}',
         // --- 흑점군 ---
         ' vec2 s1=spot(uv,vec2(0.18,0.43),vec2(0.038,0.020),0.0);',
         ' vec2 s2=spot(uv,vec2(0.215,0.455),vec2(0.017,0.0095),2.1);',
@@ -5076,7 +5079,11 @@
       const group=new THREE.Group();group.visible=false;scene.add(group);
       const mat=sunMat.clone();
       mat.uniforms.uWarm.value=0;
-      mat.uniforms.uHasMap.value=0;          // 태양의 실사 지도를 다른 별에 감지 않는다
+      // 표면 구조는 **실제 태양 사진**을 그대로 쓴다. 다른 별의 표면 사진은 세상에 없고,
+      // 별의 광구는 다 같은 대류층이라 구조는 태양의 것을 빌려도 거짓말이 아니다.
+      // 거짓이 되는 건 색이므로, 색만 그 별의 표면온도에서 계산한 값으로 갈아 끼운다.
+      mat.uniforms.uHasMap.value=sunTexture?1:0;
+      mat.uniforms.uMapAmt.value=.80;
       // 노출을 태양보다 낮춘다. 1.45 는 세 채널을 전부 1 위로 밀어 올려 톤커브 어깨에서 뭉갠다 —
       // 애써 파랗게 칠한 리겔이 도로 흰 공이 되는 이유가 이것이었다. 중간톤을 1 아래에 두면
       // 색이 살아남고, 눈부심은 코로나 스프라이트가 낸다(가장자리에서만 문턱을 넘는다).
@@ -5155,6 +5162,8 @@
         const x=-(1+sunR)*1.9;
         sunRef.position.set(x,0,0);sunRing.position.set(x,0,0);
         maxD=Math.max(4.2,Math.abs(x)+sunR+1.6);
+        let h=0;for(let i=0;i<st.ko.length;i++)h=(h*31+st.ko.charCodeAt(i))%997;
+        star.rotation.y=h/997*TAU;
         zoomEl.value='0';frame();
         card.classList.add('visiting');
         goBtn.textContent='🌌 돌아가기';
