@@ -45,10 +45,19 @@ self.addEventListener('install', e => {{
   e.waitUntil(caches.open(VER).then(c => c.addAll(FILES)));
 }});
 
+/* 옛 캐시를 지우고 이 워커가 화면을 넘겨받는다. 갱신인 경우(지울 옛 캐시가 있었다)
+   열려 있는 화면을 한 번 새로 고친다 — 캐시 우선이라 화면은 이미 옛 파일로 그려졌고,
+   8MB 를 다 받을 때까지 걸리는 시간 때문에 「두 번 켜기」로는 빗나갈 때가 많다.
+   첫 설치 때는 새로 고치지 않는다(지울 캐시가 없다). VER 은 내용 해시라 반복되지 않는다. */
 self.addEventListener('activate', e => {{
   e.waitUntil(caches.keys()
-    .then(ks => Promise.all(ks.filter(k => k !== VER).map(k => caches.delete(k))))
-    .then(() => self.clients.claim()));
+    .then(ks => {{
+      const old = ks.filter(k => k !== VER);
+      return Promise.all(old.map(k => caches.delete(k))).then(() => old.length > 0);
+    }})
+    .then(wasUpdate => self.clients.claim().then(() => wasUpdate))
+    .then(wasUpdate => wasUpdate && self.clients.matchAll({{ type: 'window' }})
+      .then(cs => cs.forEach(c => c.navigate(c.url).catch(() => {{}})))));
 }});
 
 /* 캐시 우선 — 오프라인에서 즉시 뜬다. 캐시에 없으면 네트워크로 가고,
