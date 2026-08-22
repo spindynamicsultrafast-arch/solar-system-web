@@ -229,6 +229,9 @@
     /* 별 이름표만 손가락을 받는다(.labels 는 pointer-events:none 이다). 눌러서 별 카드를 연다. */
     .label.star{font-size:10px;color:#ffe9a8;border-color:rgba(255,214,110,.42);background:rgba(10,8,22,.72);
       pointer-events:auto;cursor:pointer}
+    /* 베텔게우스 옆의 태양은 0.6픽셀이라 눈으로 못 찾는다. 이름표 밑에 화살표를 달아 자리를 짚는다. */
+    .label.sunptr{background:rgba(10,8,22,.8);border-color:rgba(255,214,110,.5);color:#ffe9a8}
+    .label.sunptr b{display:block;margin-top:1px;font-size:15px;line-height:.9;color:#ffd76e;text-shadow:0 0 7px #000}
     .label.star:hover{background:rgba(255,214,110,.2);color:#fff}
     .starcard .cmp-scrub,.starcard #starPaint{display:none}
     .starcard.visiting #starPaint{display:block}
@@ -581,8 +584,9 @@
       {id:'pallas',ko:'팔라스',emoji:'🔩',sub:'크게 기울어 도는 소행성',a:2.772,e:.2299,i:34.84,node:173.02,peri:123.22,L:182.22,period:1685.6,r:256,rot:7.813,tilt:84,color:'#8d8f92',style:'rock',surf:'regolith',minor:true,
         temp:'약 -110°C',moons:'없음',visit:'아직 방문 못 함',fact:'궤도가 35도나 기울어져 다른 소행성들과 다른 길을 가요. 그래서 충돌을 많이 겪어 표면이 온통 크레이터투성이예요.'},
       // 🥚 이스터에그 — 실제 소행성이 아니다. 궤도요소는 소행성대(2~3.3 AU) 안에 들어가도록 지어냈다.
-      {id:'yeonjae',ko:'연재별',emoji:'⭐',sub:'소행성대에 숨어 반짝이는 별',a:2.5555,e:.0721,i:5.83,node:145.2,peri:66.4,L:311.7,period:1492.6,r:14,rot:6.7,tilt:12,color:'#f2c76b',style:'rock',surf:'regolith',minor:true,
-        temp:'약 -100°C',moons:'없음',visit:'아직 아무도 못 찾았어요',fact:'화성과 목성 사이 소행성대에 숨어 있는 아주 작은 별이에요. 너무 작아서 이름표도 눌러야 나타나요. 찾았다면 우주에서 제일 운이 좋은 사람이에요! ⭐'},
+      {id:'yeonjae',ko:'연재별',emoji:'⭐',sub:'소행성대에 숨어 반짝이는 별',a:2.5555,e:.0721,i:5.83,node:145.2,peri:66.4,L:311.7,period:1492.6,r:14,rot:6.7,tilt:12,color:'#f2c76b',style:'rock',surf:'regolith',minor:true,glow:'#ffd24a',
+        rings:[{inner:1.75,outer:2.05,alpha:.34,color:'#a9e4ff'},{inner:2.05,outer:2.62,alpha:.52,color:'#8fd8ff'},{inner:2.62,outer:2.78,alpha:.20,color:'#cbefff'}],
+        temp:'약 -100°C',moons:'7개 (무지개 달)',visit:'아직 아무도 못 찾았어요',fact:'화성과 목성 사이 소행성대에 숨어 있는 아주 작은 별이에요. 하늘색 얼음 고리를 두르고, 무지개 색 달 일곱 개가 그 둘레를 돌아요. 너무 작아서 이름표도 눌러야 나타나요. 찾았다면 우주에서 제일 운이 좋은 사람이에요! ⭐'},
       {id:'jupiter',ko:'목성',emoji:'🟤',sub:'가장 크고 빠르게 도는 행성',a:5.2029,e:.0484,i:1.303,node:100.56,peri:14.75,L:34.4,period:4332.6,r:69911,rot:9.9250,tilt:3.13,color:'#c59b6d',style:'jupiter',surf:'gas',gas:true,
         rings:[{inner:1.72,outer:1.81,alpha:.10,color:'#c9a887'},{inner:1.81,outer:3.10,alpha:.035,color:'#b4967c'}],
         temp:'구름 위 -145°C',moons:'97개 확인',visit:'보이저 · 갈릴레오 · 주노',fact:'태양계에서 가장 큰 행성이고 하루가 10시간도 안 될 만큼 빨리 돌아요. 단단한 땅은 없고, 지구보다 큰 폭풍인 대적점이 수백 년째 불고 있어요.'},
@@ -628,6 +632,24 @@
         fact:'금성에는 원래 달이 하나도 없어요. 그런데 여기 아주 작은 달이 숨어 있네요! 금성을 하루에 세 번이나 돌아요. 💫'},
       {id:'junghyun',parent:'venus',ko:'정현별',emoji:'✨',sub:'조금 더 멀리 도는 비밀 달',r:7,dk:31000,period:.696,ecc:.006,inc:3.4,color:'#e9e2d2',style:'ice',surf:'ice',
         fact:'준재별보다 조금 더 멀리서 천천히 돌아요. 얼음으로 되어 있어서 금성의 두꺼운 구름 위에서 하얗게 반짝여요. ✨'},
+      // 🥚 이스터에그 — 연재별의 무지개 달 일곱. 실제 소행성이 아니므로 위성도 지어낸 것이다.
+      // 다만 **모양은 진짜 규칙을 따른다**: 이만한 크기(반지름 1~2km)에서는 자기 중력으로 둥글어지지
+      // 못해 전부 감자 모양이고(아래 MOON_SHAPE), 표면은 부딪힌 자국이 덮인 맨돌이다.
+      // 색만 무지개다 — 그게 이스터에그다.
+      {id:'rbRed',parent:'yeonjae',ko:'빨강달',emoji:'🔴',sub:'가장 안쪽을 도는 붉은 달',r:1.6,dk:70,period:.090,ecc:.004,inc:1.2,color:'#ff5a4e',style:'rock',surf:'regolith',
+        fact:'연재별에 가장 가까이 붙어 도는 달이에요. 두 시간이면 한 바퀴를 다 돌아요. 붉은 돌가루가 표면을 덮고 있어요.'},
+      {id:'rbOrange',parent:'yeonjae',ko:'주황달',emoji:'🟠',sub:'고리 바로 바깥의 주황 달',r:1.4,dk:96,period:.145,ecc:.006,inc:2.4,color:'#ff9f43',style:'rock',surf:'regolith',
+        fact:'하늘색 고리 바로 바깥에서 돌아요. 고리의 얼음 알갱이를 조금씩 쓸어 담아서 고리 가장자리를 깔끔하게 다듬어 줘요.'},
+      {id:'rbYellow',parent:'yeonjae',ko:'노랑달',emoji:'🟡',sub:'가장 밝게 빛나는 노란 달',r:1.2,dk:128,period:.223,ecc:.003,inc:0.8,color:'#ffe14a',style:'rock',surf:'regolith',
+        fact:'일곱 달 중 가장 밝아요. 표면에 유황 가루가 얹혀 있어서 햇빛을 받으면 노랗게 반짝여요.'},
+      {id:'rbGreen',parent:'yeonjae',ko:'초록달',emoji:'🟢',sub:'가장 큰 초록 달',r:1.5,dk:165,period:.326,ecc:.009,inc:3.1,color:'#56d97b',style:'rock',surf:'regolith',
+        fact:'일곱 달 중 가장 커요. 감람석이라는 초록 광물이 많아서 초록빛이 돌아요 — 지구의 화산 모래에도 있는 돌이에요.'},
+      {id:'rbBlue',parent:'yeonjae',ko:'파랑달',emoji:'🔵',sub:'얼음이 섞인 파란 달',r:1.1,dk:210,period:.468,ecc:.005,inc:1.7,color:'#4aa8ff',style:'ice',surf:'ice',
+        fact:'속에 얼음이 섞여 있어서 파랗게 보여요. 햇빛이 얼음 속을 지나면서 붉은빛을 잃어버리기 때문이에요.'},
+      {id:'rbIndigo',parent:'yeonjae',ko:'남색달',emoji:'🔷',sub:'거꾸로 도는 남색 달',r:1.3,dk:265,period:.665,ecc:.012,inc:4.6,color:'#4b5ee0',style:'ice',surf:'dirtyIce',
+        fact:'다른 여섯 달과 반대 방향으로 돌아요. 원래 이 별의 달이 아니라 지나가다 붙잡힌 떠돌이였을 거예요.'},
+      {id:'rbViolet',parent:'yeonjae',ko:'보라달',emoji:'🟣',sub:'가장 바깥의 보라 달',r:0.9,dk:330,period:.923,ecc:.015,inc:6.2,color:'#b06ef0',style:'rock',surf:'tholin',
+        fact:'가장 멀리서 가장 느리게 돌아요. 햇빛이 표면의 얼음을 오래 익혀서 보랏빛 톨린이 쌓였어요.'},
       {id:'phobos',parent:'mars',ko:'포보스',emoji:'🥔',sub:'화성으로 떨어지는 감자 달',r:11.3,dk:9376,period:.3189,ecc:.0151,inc:1.09,color:'#786d61',style:'rock',tex:'phobosReal',
         fact:'감자처럼 울퉁불퉁하고, 100년에 2m씩 화성에 가까워져요. 5천만 년쯤 뒤에는 부서져 화성의 고리가 될 거예요.'},
       {id:'deimos',parent:'mars',ko:'데이모스',emoji:'🪨',sub:'화성의 아주 작은 바깥 달',r:6.2,dk:23463,period:1.2624,ecc:.0003,inc:.93,color:'#918475',style:'rock',tex:'deimosReal',
@@ -672,7 +694,7 @@
         fact:'천왕성의 큰 달 중 가장 바깥을 돌아요. 크레이터 바닥마다 검붉은 물질이 고여 있고, 높이 11km의 산도 솟아 있어요.'},
       {id:'proteus',parent:'neptune',ko:'프로테우스',emoji:'🧱',sub:'공이 되지 못한 각진 달',r:210,dk:117647,period:1.1223,ecc:.0005,inc:.08,color:'#5f5b57',style:'rock',surf:'dark',
         fact:'스스로 둥글어질 수 있는 크기의 한계에 딱 걸쳐 있어서, 공이 되다 만 각진 모양이에요. 아주 어두워서 보이저 2호가 갈 때까지 아무도 몰랐어요.'},
-      {id:'triton',parent:'neptune',ko:'트리톤',emoji:'🔵',sub:'거꾸로 도는 질소 얼음달',r:1353.4,dk:354759,period:5.8768,ecc:.00002,inc:156.87,color:'#d8bdc9',style:'ice',tex:'tritonReal',
+      {id:'triton',parent:'neptune',ko:'트리톤',emoji:'🔵',sub:'거꾸로 도는 질소 얼음달',r:1353.4,dk:354759,period:5.8768,ecc:.00002,inc:156.87,color:'#e0d6c9',style:'ice',tex:'tritonReal',
         fact:'해왕성 자전과 반대로 돌아요. 원래 카이퍼 벨트의 왜소행성이었다가 붙잡힌 거예요. 영하 235도인데도 질소 간헐천이 8km 높이로 솟구쳐요.'},
       {id:'nereid',parent:'neptune',ko:'네레이드',emoji:'🥅',sub:'가장 찌그러진 궤도를 도는 달',r:170,dk:5513818,period:360.14,ecc:.7507,inc:7.23,color:'#7d7f84',style:'rock',surf:'dirtyIce',
         fact:'궤도가 너무 찌그러져서 해왕성과의 거리가 7배나 달라져요. 트리톤이 붙잡히던 대혼란 때 밖으로 튕겨 나간 것으로 보여요.'},
@@ -1275,8 +1297,56 @@
       const u=mat.userData;
       if(u.bumpBase!==undefined)mat.bumpScale=u.bumpBase*s/u.bumpRef;
     }
+    // ---- 가짜색 모자이크를 눈에 보이는 색으로 되돌리기 ----
+    // 보이저 2호 협각 카메라에는 **빨강 필터가 없었다.** 그래서 JPL 은 트리톤 컬러 모자이크를
+    // 주황(0.59µm)→R · 보라(0.41µm)→G · **자외선**(0.25~0.35µm)→B 로 옮겨 만들었다. 자외선을 잘
+    // 되쏘는 신선한 질소 서리가 그래서 청록색으로 나온다 — 눈에 보이는 색이 아니다.
+    // JPL 이 직접 못박아 두었다: 「실제로 트리톤에는 눈에 파랗게 보이는 곳이 없다」(PIA01536).
+    // 채널을 원래 파장 자리로 되돌린다 — R=주황 그대로 · G=주황과 보라의 중간(0.55µm) · B=보라.
+    // 자외선 채널은 눈이 못 보는 빛이므로 버린다. 지형(밝기 구조)은 하나도 잃지 않는다.
+    // 그 뒤 **색조만** 측광값 쪽으로 옮긴다(B−V=0.70, HST Pascu 2006 → 거의 중성에 가까운 따뜻한 흰색).
+    // 밝기는 손대지 않는다 — 평균을 목표값에 그냥 맞췄더니 배율이 1을 넘어 남극관이 하얗게
+    // 날아갔다(질소 서리는 알베도 0.85~0.95라 원래 흰색 가까이 있어서 조금만 올려도 붙어 버린다).
+    // 그래서 세 채널 배율을 휘도 기준으로 정규화한다: 색은 옮겨 가고 밝기 분포는 그대로 남는다.
+    // 자가 보정이라 원본 모자이크가 바뀌어도 결과 색조는 그대로다.
+    const MAP_REMAP={
+      tritonReal:{m:[[1,0,0],[.5,.5,0],[0,1,0]],target:[.910,.886,.847]}   // #E8E2D8
+    };
+    function remapMapColors(tex,source,cfg){
+      const im=new Image();
+      im.onload=()=>{
+        const W=im.naturalWidth,H=im.naturalHeight;
+        const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+        const cx=cv.getContext('2d');cx.drawImage(im,0,0);
+        const d=cx.getImageData(0,0,W,H),px=d.data,m=cfg.m;
+        let sr=0,sg=0,sb=0;
+        for(let i=0;i<px.length;i+=4){
+          const r=px[i],g=px[i+1],b=px[i+2];
+          const R=m[0][0]*r+m[0][1]*g+m[0][2]*b;
+          const G=m[1][0]*r+m[1][1]*g+m[1][2]*b;
+          const B=m[2][0]*r+m[2][1]*g+m[2][2]*b;
+          // 「트리톤에 눈으로 파랗게 보이는 곳은 없다」(JPL PIA01536). 되돌린 뒤에도 국소적으로
+          // 청록이 남으면 그건 자외선 채널의 잔향이다. 트리톤은 B−V=0.70 으로 태양보다 **붉은**
+          // 쪽이므로 어느 화소에서도 R≥G≥B 여야 한다. 그 순서를 강제해 잔향을 지운다.
+          const Gc=Math.min(G,R),Bc=Math.min(B,Gc);
+          px[i]=R;px[i+1]=Gc;px[i+2]=Bc;sr+=R;sg+=Gc;sb+=Bc;
+        }
+        const n=px.length/4;
+        // 채널 배율을 구한 뒤 **휘도로 정규화**한다. 평균색은 목표 색조로 가고, 화면 밝기는 그대로다.
+        let kr=cfg.target[0]*255/Math.max(1,sr/n),kg=cfg.target[1]*255/Math.max(1,sg/n),kb=cfg.target[2]*255/Math.max(1,sb/n);
+        const kl=.2126*kr+.7152*kg+.0722*kb;kr/=kl;kg/=kl;kb/=kl;
+        for(let i=0;i<px.length;i+=4){
+          px[i]=Math.min(255,px[i]*kr);px[i+1]=Math.min(255,px[i+1]*kg);px[i+2]=Math.min(255,px[i+2]*kb);
+        }
+        cx.putImageData(d,0,0);
+        tex.image=cv;tex.needsUpdate=true;
+      };
+      im.src=source;
+    }
     function realTexture(key){
-      const source=key&&(CTEX[key]||TEX[key]);if(!source)return null;const t=textureLoader.load(source);t.encoding=THREE.sRGBEncoding;t.wrapS=THREE.RepeatWrapping;t.anisotropy=8;return t;
+      const source=key&&(CTEX[key]||TEX[key]);if(!source)return null;const t=textureLoader.load(source);t.encoding=THREE.sRGBEncoding;t.wrapS=THREE.RepeatWrapping;t.anisotropy=8;
+      if(MAP_REMAP[key])remapMapColors(t,source,MAP_REMAP[key]);
+      return t;
     }
     // ---- 흑백 기본도에 실제 색 입히기 ----
     // USGS 전구 모자이크 중 일부는 **범색(panchromatic) 기본도**다. 지형은 실제 그대로지만 색이 없다.
@@ -1684,6 +1754,15 @@
     windGeo.setAttribute('position',new THREE.BufferAttribute(windPos,3));const solarWind=new THREE.Points(windGeo,new THREE.PointsMaterial({color:0xb7dcff,size:.68,sizeAttenuation:false,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false}));
     scene.add(solarWind);
     function updateSolarEffects(dt,now){
+      // 반짝임. 주기가 다른 사인 둘을 곱해 규칙적으로 깜빡이지 않게 한다 — 한 주기짜리는
+      // 「점멸하는 전구」로 보이고, 두 주기가 어긋나면 「별이 반짝인다」로 읽힌다.
+      for(let i=0;i<twinkles.length;i++){
+        const t=twinkles[i],ph=now*.001+t.phase;
+        const k=.5+.5*Math.sin(ph*2.3)*Math.sin(ph*.77);
+        t.halo.scale.setScalar(t.base*(.78+.44*k));
+        t.halo.material.opacity=.55+.55*k;
+        if(t.mat.emissive)t.mat.emissiveIntensity=.55+.6*k;
+      }
       // 태양도 돈다. 예전에는 224초에 한 바퀴(사실상 정지)였고, 멈춤을 눌러도 혼자 돌았다.
       // 다른 천체와 같은 규칙을 쓴다 — 실제 자전 25.38일을 로그로 눌러 7.0초, 속도 슬라이더에 연동.
       // 흑점이 눈에 띄게 흘러가서 「태양도 돈다」가 처음으로 화면에서 보인다.
@@ -1823,6 +1902,8 @@
       };
       im.src=src;
     }
+    // 반짝이는 천체 목록. 매 프레임 후광의 크기·밝기를 흔든다 — 「별처럼 반짝인다」가 이걸로 난다.
+    const twinkles=[];
     data.forEach(p=>{
       const holder=new THREE.Group(),tilt=new THREE.Group();tilt.rotation.z=rad(p.tilt);holder.add(tilt);root.add(holder);
       const mat=surfaceMaterial(p,null,p.r>400);
@@ -1847,13 +1928,26 @@
       // 대기 산란 껍질
       let atmo=null;const cfg=ATMO[p.id];
       if(cfg){atmo=new THREE.Mesh(UNIT,atmosphereShell(cfg.c,cfg.s,cfg.p));atmo.userData.h=cfg.h;atmo.renderOrder=3;tilt.add(atmo)}
+      // 반짝이는 천체(이스터에그). 스스로 빛나게 하고 후광을 하나 씌운다. 후광은 **메시의 자식**이라
+      // 메시 크기를 그대로 물려받는다 — 배율이 바뀌어도 몸집 대비 같은 크기로 따라온다.
+      if(p.glow){
+        const gc=new THREE.Color(p.glow);
+        if(mat.emissive){mat.emissive.copy(gc);mat.emissiveIntensity=.85}
+        const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glowMap,color:gc,transparent:true,
+          blending:THREE.AdditiveBlending,depthWrite:false,opacity:.72}));
+        halo.scale.setScalar(2.9);mesh.add(halo);
+        twinkles.push({halo,mat,base:2.9,phase:twinkles.length*1.7});
+      }
       const axis=new THREE.Line(AXIS,new THREE.LineBasicMaterial({color:0xaedcff,transparent:true,opacity:.55}));axis.visible=false;mesh.add(axis);
       const lab=document.createElement('div');lab.className='label'+(p.dwarf?' dwarf':'');lab.textContent=p.emoji+' '+p.ko;labels.appendChild(lab);
       bodies.push({p,holder,tilt,mesh,hit,axis,cloud,atmo,ringRec,mat,label:lab,baseScale:1});
     });
     // 자체 중력으로 둥글어지지 못한 작은 위성들의 실제 삼축 비율 (평균반지름=1로 정규화)
     const MOON_SHAPE={phobos:[1.24,.86,.94],deimos:[1.18,.90,.93],hyperion:[1.24,.83,.96],amalthea:[1.55,.72,.78],
-      proteus:[1.08,.94,.98],nix:[1.50,.76,.90],hydra:[1.42,.80,.88],phoebe:[1.06,.96,.98],weywot:[1.20,.88,.92]};
+      proteus:[1.08,.94,.98],nix:[1.50,.76,.90],hydra:[1.42,.80,.88],phoebe:[1.06,.96,.98],weywot:[1.20,.88,.92],
+      // 무지개 달. 색은 지어냈지만 모양은 규칙대로다 — 이 크기에서 둥근 달은 나올 수 없다.
+      rbRed:[1.38,.82,.90],rbOrange:[1.22,.88,.95],rbYellow:[1.46,.78,.88],rbGreen:[1.15,.93,.97],
+      rbBlue:[1.31,.85,.92],rbIndigo:[1.52,.74,.86],rbViolet:[1.28,.87,.89]};
     // 위성 궤도선: 이심률을 반영한 타원(긴반지름 1로 정규화). 네레이드처럼 찌그러진 궤도도 그대로 보인다.
     function moonOrbitGeo(e){const pts=[];for(let i=0;i<=144;i++){const E=i/144*TAU;pts.push(new THREE.Vector3(Math.cos(E)-e,0,-Math.sqrt(1-e*e)*Math.sin(E)))}
       const g=new THREE.BufferGeometry().setFromPoints(pts);
@@ -3683,7 +3777,7 @@
       callisto:{sky:['#020309','#111015'],ground:'#655d52',ground2:'#332f2a',gravity:.126,hazard:'충돌 분지'},
       titan:{sky:['#d4943e','#4f2f16'],ground:'#a66f32',ground2:'#50351d',gravity:.14,hazard:'메테인 호수'},
       enceladus:{sky:['#02050b','#101722'],ground:'#eef6fa',ground2:'#889aa6',gravity:.011,hazard:'얼음 틈'},
-      triton:{sky:['#03040b','#15121c'],ground:'#d8bdc9',ground2:'#826d78',gravity:.079,hazard:'질소 간헐천'},
+      triton:{sky:['#03040b','#15121c'],ground:'#e8e2d8',ground2:'#a8968a',gravity:.079,hazard:'질소 간헐천'},
       haumea:{sky:['#02040b','#101522'],ground:'#d9e1e7',ground2:'#82909b',gravity:.045,hazard:'미끄러운 얼음'},
       makemake:{sky:['#070309','#1d0d0a'],ground:'#985f47',ground2:'#503127',gravity:.05,hazard:'메테인 얼음'},
       eris:{sky:['#02040a','#10131c'],ground:'#c9d3db',ground2:'#707b84',gravity:.084,hazard:'차가운 얼음'},
@@ -4256,7 +4350,22 @@
       const hud=document.getElementById('cmpHud');
       const scrub=document.getElementById('cmpScrub');
       const SUN={id:'sun',ko:'태양',emoji:'☀️',r:696340};
-      const EARTH_D=12742;
+      const EARTH_D=12742,SUN_R=696340;
+      // build() 는 들어올 때마다 돌므로 별의 몸체·재질은 한 번만 만들어 st 에 붙여 둔다.
+      function starBody(st){
+        return st._cmpP||(st._cmpP={id:'star_'+st.ko,ko:st.ko,emoji:'⭐',r:st.r*SUN_R,star:true,sunR:st.r,tilt:0});
+      }
+      // 표면은 별 가까이 보기와 같은 규칙이다 — 태양 사진의 구조에 그 별의 온도색, 흑점은 뺀다.
+      function starMat(st){
+        if(st._cmpM)return st._cmpM;
+        const m=sunMat.clone(),c=st.tint;
+        m.uniforms.uWarm.value=0;m.uniforms.uSpots.value=0;
+        m.uniforms.uHasMap.value=sunTexture?1:0;m.uniforms.uMapAmt.value=.80;
+        m.uniforms.uBright.value=0.95;m.uniforms.uTintMix.value=1;
+        m.uniforms.uTint.value.setRGB(c[0],c[1],c[2]);
+        starMats.push(m);return st._cmpM=m;
+      }
+      const starMats=[];
       // 한 천체를 세운다. x = 중심의 가로 자리 · 바닥은 모두 y=0 이라 「키 재기」로 읽힌다.
       function place(f,x){
         const rr=f.p.r*K;
@@ -4277,7 +4386,9 @@
         }
         group.add(holder);
         const el=document.createElement('div');el.className='label cmp-lab';
-        el.innerHTML=f.p.emoji+' '+f.p.ko+'<b>'+Math.round(f.p.r*2).toLocaleString()+' km</b>';
+        el.innerHTML=f.p.emoji+' '+f.p.ko+'<b>'+(f.p.star
+          ?'태양의 '+(f.p.sunR<10?f.p.sunR.toFixed(1):Math.round(f.p.sunR))+'배'
+          :Math.round(f.p.r*2).toLocaleString()+' km')+'</b>';
         labels.appendChild(el);labs.push(el);
         const it={holder,mesh,mat:f.mat,el,rr,x,p:f.p};
         items.push(it);return it;
@@ -4293,6 +4404,10 @@
         });
         moonBodies.forEach(m=>list.push({p:m.p,mat:m.mesh.material,ring:null}));
         list.push({p:SUN,mat:sunMat,ring:null});
+        // 줄은 태양에서 끝나지 않는다. 하늘에서 이름을 불러 준 별들이 그 뒤에 선다 —
+        // 전부 태양보다 크고, 베텔게우스는 764배다. 「태양이 제일 크다」로 끝나면
+        // 태양이 평범한 별이라는 사실을 놓친다. 그 줄의 끝이 이 화면에서 가장 할 말이 많은 자리다.
+        NAMED_STARS.forEach(st=>list.push({p:starBody(st),mat:starMat(st),ring:null}));
         list.sort((a,b)=>a.p.r-b.p.r);
         let x=0,prevHalf=0;
         list.forEach((f,i)=>{
@@ -4327,6 +4442,10 @@
         // 태양은 **원점의 점광원**이다. 줄이 원점에서 멀리 뻗으면 천체마다 옆에서 빛을 받아
         // 반달로 그려진다 — 크기를 재는 화면에서는 온전한 원반이 맞다.
         // 그래서 카메라를 원점에 못 박고 **줄을 옮긴다.** 빛이 정확히 눈 자리에서 나오므로 위상각 0이다.
+        // 베텔게우스는 반지름 5억 3천만 km 라 카메라가 280만 단위 뒤로 물러난다. far 를 3e5 로
+        // 둔 채로는 통째로 잘려 화면이 텅 빈다. 줄 길이에 맞춰 같이 연다(정밀도는 로그 깊이가 맡는다).
+        const need=Math.max(3e5,dist*4);
+        if(need<camera.far*.8||need>camera.far*1.25){camera.far=need;camera.updateProjectionMatrix()}
         const cy=-dist*Math.sin(EL),cz=-dist*Math.cos(EL);
         group.position.set(-w.x,cy-w.r,cz);
         camera.position.set(0,0,0);
@@ -4338,14 +4457,18 @@
         const w=walkAt(walk);if(w.i===_shown)return;_shown=w.i;
         const p=items[w.i].p,d=p.r*2;
         document.getElementById('cmpTitle').textContent=p.emoji+' '+p.ko;
+        // 별 앞에서 「지구의 8만 배」는 숫자가 아니라 벽이다. 별은 태양을 자로 쓴다 —
+        // 방금 지나온 것이 태양이라 눈에 그 크기가 아직 남아 있다.
         const rel=d/EARTH_D;
-        const cmp=rel>=1?('지구의 '+rel.toFixed(rel<10?1:0)+'배'):('지구의 '+Math.round(1/rel)+'분의 1');
+        const cmp=p.star?('태양의 '+(p.sunR<10?p.sunR.toFixed(1):Math.round(p.sunR))+'배')
+          :rel>=1?('지구의 '+rel.toFixed(rel<10?1:0)+'배'):('지구의 '+Math.round(1/rel)+'분의 1');
         document.getElementById('cmpNote').innerHTML='지름 <b style="color:var(--yellow)">'+
           Math.round(d).toLocaleString()+' km</b> · '+cmp;
       }
       const _cmpV=new THREE.Vector3();
       function update(){
         if(!active)return;
+        for(let i=0;i<starMats.length;i++)starMats[i].uniforms.uSunTime.value=performance.now()*.001;
         const v=new THREE.Vector3();
         for(let n=0;n<items.length;n++){
           const it=items[n];
@@ -5124,7 +5247,8 @@
         const el=document.createElement('div');el.className=cls;el.textContent=txt;
         el.style.display='none';labels.appendChild(el);return el;
       }
-      const starLab=mkLab('label star','⭐'),sunLab=mkLab('label moon','☀️ 우리 태양');
+      const starLab=mkLab('label star','⭐'),sunLab=mkLab('label moon sunptr','');
+      sunLab.innerHTML='☀️ 우리 태양<b>▼</b>';
       const card=document.getElementById('starCard'),goBtn=document.getElementById('starGo');
       const zoomEl=document.getElementById('starZoom');
       const _svV=new THREE.Vector3();
@@ -5201,15 +5325,16 @@
         // 이름표. 별 이름은 물러나 있을 때만 — 표면 앞까지 가면 별이 화면을 다 덮어서 글자가 방해다.
         const far=parseFloat(zoomEl.value)<.45;
         place(starLab,_svV.set(0,1.25,0),far);
-        place(sunLab,_svV.copy(sunRef.position).setY(sunR+.16),true);
+        // 화살촉이 태양을 짚도록 이름표를 그만큼 더 위로 올린다(아래 -34px).
+        place(sunLab,_svV.copy(sunRef.position).setY(sunR),true,-34);
       }
-      function place(el,pos,on){
+      function place(el,pos,on,dy){
         if(!on){el.style.display='none';return}
         pos.project(camera);
         if(pos.z>1||Math.abs(pos.x)>1.05||Math.abs(pos.y)>1.05){el.style.display='none';return}
         el.style.display='block';
         el.style.left=(pos.x*.5+.5)*innerWidth+'px';
-        el.style.top=(-pos.y*.5+.5)*innerHeight-14+'px';
+        el.style.top=(-pos.y*.5+.5)*innerHeight+(dy===undefined?-14:dy)+'px';
       }
       zoomEl.addEventListener('input',()=>{if(active)frame()});
       renderer.domElement.addEventListener('wheel',e=>{
@@ -5239,7 +5364,7 @@
       // 실제 비율은 「지구 반지름 0.0008단위」와 「카이퍼 궤도 600단위」가 한 장면에 있다. 근평면을
       // 고정하면 가까이 갔을 때 천체가 통째로 잘린다(포보스는 근평면보다 작다). 보는 거리에 맞춰 따라간다.
       // 깊이 정밀도는 logarithmicDepthBuffer가 맡으므로 far는 건드리지 않는다.
-      if(!SKY.isActive()&&!STARVIEW.isActive()){
+      if(!SKY.isActive()&&!STARVIEW.isActive()&&!CMP.isActive()){
         // far 도 따라가야 한다. 300,000 에 고정해 두면 안쪽 행성 탭에서 물러났을 때(축척이 커서
         // 오르트 구름이 3천만 단위에 있다) 구름이 통째로 잘린다 — 실측 6,155점 전부 far 밖.
         // 정밀도는 logarithmicDepthBuffer 가 맡으므로 늘려도 잃는 게 없다. 기본 화면에서는
